@@ -1,0 +1,2572 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1a56a0">
+<title>Programação Onduladeira — Prime</title>
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="manifest" href="manifest.json">
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<style>
+/* Padrão visual dos apps da Prime (igual ao Orçamento de Chapas e à Consulta de Estoque): azul #1a56a0 e branco */
+:root{
+  --papel:#d6e4f4; --cartao:#ffffff; --tinta:#1b2b40; --tinta2:#4a6a8f; --tinta3:#7a92ac;
+  --kraft:#1a56a0; --kraft-claro:#eef4ff; --campo:#f4f8ff; --borda:#b8cfe8; --linha:#dce8fa; --linha2:#eef3fa;
+  --ok:#2e7d32; --alerta:#c62828; --alerta-bg:#fdecea; --ok-bg:#e8f5e9;
+  --azul:#1a56a0;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{font-family:'Segoe UI',Arial,sans-serif;background:var(--papel);color:var(--tinta);
+  font-size:15px;line-height:1.45;padding-bottom:30px;min-height:100vh}
+
+/* cabeçalho em cartão azul */
+.topo{max-width:760px;margin:0 auto;padding:14px 12px 0}
+.header{background:var(--kraft);border-radius:16px;padding:16px 18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.logo-box{width:46px;height:46px;border-radius:10px;flex-shrink:0;background:#fff;display:flex;align-items:center;justify-content:center}
+.logo-box svg{width:36px;height:36px}
+.header-txt{flex:1;min-width:170px}
+.header-txt h1{color:#fff;font-size:21px;font-weight:700;line-height:1.2}
+.header-txt p{color:#a8c8f0;font-size:14px;margin-top:3px}
+.header-dir{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+#syncChip{font-size:12px;font-weight:600;color:#a8c8f0;white-space:nowrap}
+.header-dir a{color:#fff;font-size:13px;font-weight:600;text-decoration:none;white-space:nowrap}
+.header-dir a:hover{text-decoration:underline}
+#velChip{background:#fff;color:var(--kraft);border:0;border-radius:8px;padding:8px 14px;font:inherit;
+  font-size:14px;font-weight:800;cursor:pointer;white-space:nowrap}
+.tabbar{position:sticky;top:0;z-index:20;background:var(--papel);max-width:760px;margin:0 auto;
+  display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:12px 12px 8px}
+.tabbar button{border:2px solid var(--borda);background:var(--campo);color:var(--kraft);border-radius:8px;
+  padding:8px 4px;font:inherit;font-size:14px;font-weight:700;cursor:pointer}
+.tabbar button.on{background:var(--kraft);border-color:var(--kraft);color:#fff}
+main{max-width:760px;margin:0 auto;padding:6px 12px 30px}
+.pane{display:none}.pane.on{display:block}
+
+.card{background:var(--cartao);border-radius:14px;padding:16px;margin-bottom:14px;box-shadow:0 2px 10px rgba(0,0,0,.08)}
+.card h3{color:var(--kraft)}
+label{display:block;font-size:11.5px;font-weight:700;color:var(--tinta2);
+  text-transform:uppercase;letter-spacing:.4px;margin:10px 0 4px}
+input,select,textarea{width:100%;padding:9px 11px;border:2px solid var(--borda);
+  border-radius:10px;font:inherit;background:var(--campo);color:var(--tinta);outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--kraft);background:#fff}
+.row{display:flex;gap:10px}.row>*{flex:1;min-width:0}
+.btn{display:inline-block;border:2px solid var(--kraft);border-radius:8px;padding:9px 18px;cursor:pointer;
+  font:inherit;font-size:15px;font-weight:700;background:var(--kraft);color:#fff}
+.btn.sec{background:var(--campo);color:var(--kraft);border-color:var(--borda)}
+.btn.sec:hover{border-color:var(--kraft)}
+.btn.mini{padding:5px 12px;font-size:13px}
+.btn.perigo{background:var(--alerta);border-color:var(--alerta)}
+.btn:disabled{opacity:.45;cursor:default}
+.acoes{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+
+/* régua de bobina — assinatura visual */
+.regua{margin:12px 0 4px}
+.regua .barra{position:relative;height:46px;background:
+  repeating-linear-gradient(90deg,#dce8fa 0 6px,#f4f8ff 6px 12px);
+  border:1.5px solid var(--kraft);border-radius:8px;overflow:hidden}
+.regua .chapa{position:absolute;top:0;bottom:0;background:var(--kraft);opacity:.88;
+  border-right:2px solid #fff}
+.regua .chapa span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  color:#fff;font-weight:700;font-size:13px}
+.regua .legenda{display:flex;justify-content:space-between;font-size:12.5px;color:var(--tinta2);margin-top:4px}
+.regua .legenda b{color:var(--tinta)}
+
+.rolagem{max-height:235px;overflow-y:auto;margin-top:6px;border:1px solid var(--linha);border-radius:10px}
+.tbArr{font-size:13.5px}
+.tbArr th{position:sticky;top:0;background:var(--cartao)}
+.tbArr tbody tr{cursor:pointer}
+.tbArr tbody tr:hover td{background:#f7fafd}
+.tbArr tr.best td{font-weight:700}
+.tbArr tr.best td:first-child::after{content:" ★";color:var(--kraft)}
+.tbArr tr.sel td,.tbArr tr.sel:hover td{background:#dce8fa}
+
+.resumo{display:grid;grid-template-columns:repeat(auto-fit,minmax(105px,1fr));gap:8px;margin-top:12px}
+.resumo .m{background:var(--campo);border:1px solid var(--linha);border-radius:10px;padding:8px 10px}
+.resumo .m b{display:block;font-size:18px;font-weight:800;line-height:1.15;color:var(--kraft)}
+.resumo .m b small{font-size:12px;font-weight:600;color:var(--tinta2)}
+.resumo .m span{font-size:11px;font-weight:700;color:var(--tinta2);text-transform:uppercase;letter-spacing:.4px}
+
+.aviso{border-radius:10px;padding:10px 14px;margin-top:12px;font-size:14px;border:1px solid}
+.aviso.ruim{background:var(--alerta-bg);border-color:#f3c1bc;color:#8e1c1c}
+.aviso.bom{background:var(--ok-bg);border-color:#c3e3c5;color:#1b5e20}
+
+/* lista de programação */
+.dia{margin-bottom:18px}
+.dia>h2{font-size:17px;font-weight:800;color:var(--kraft);
+  border-bottom:2px solid var(--kraft);padding-bottom:4px;margin-bottom:10px;
+  display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.dia>h2 small{font-size:12.5px;font-weight:600;color:var(--tinta2)}
+.of{background:var(--cartao);border-left:5px solid var(--kraft);
+  border-radius:10px;padding:10px 12px;margin-bottom:8px;box-shadow:0 2px 8px rgba(0,0,0,.07)}
+.of.cancelada{border-left-color:var(--alerta);opacity:.62}
+.of.cancelada .l1 b{color:var(--alerta);text-decoration:line-through}
+.of .l1{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.of .l1 b{font-size:16px;font-weight:700}
+.of .l1 .num{font-weight:700;color:var(--tinta2)}
+.of .l2{font-size:13.5px;color:var(--tinta2);margin-top:2px}
+.of .l3{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}
+.tag{font-size:12px;font-weight:700;background:var(--kraft-claro);border:1px solid var(--linha);color:var(--kraft);
+  border-radius:6px;padding:2px 8px;white-space:nowrap}
+.tag.col-ok{background:var(--ok-bg);border-color:#c3e3c5;color:var(--ok)}
+.tag.col-ruim{background:var(--alerta-bg);border-color:#f3c1bc;color:var(--alerta)}
+.tag.cancel{background:var(--alerta);color:#fff;border-color:var(--alerta)}
+.of .ops{display:flex;gap:14px;margin-top:8px}
+.of .ops button{border:0;background:none;color:var(--azul);font:inherit;font-size:13px;font-weight:700;
+  cursor:pointer;padding:0}
+.of .ops button.del{color:var(--alerta)}
+.totais{background:var(--kraft);color:#fff;border-radius:10px;padding:10px 14px;
+  display:flex;gap:18px;flex-wrap:wrap;margin-top:4px}
+.totais div b{display:block;font-size:17px;font-weight:800}
+.totais div span{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;opacity:.85}
+.vazio{text-align:center;color:var(--tinta2);padding:40px 20px;font-size:14.5px}
+
+/* tabelas */
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;text-align:left;color:var(--tinta3);
+  border-bottom:1px solid #e4ecf6;padding:9px 6px}
+td{border-bottom:1px solid var(--linha2);padding:5px 6px;vertical-align:middle}
+td input,td select{padding:5px 7px;font-size:13.5px;border-radius:6px;border-width:1.5px}
+.est{color:var(--alerta);font-size:11px;font-weight:700}
+details{background:var(--cartao);border-radius:14px;padding:2px 16px;margin-bottom:14px;box-shadow:0 2px 10px rgba(0,0,0,.08)}
+summary{cursor:pointer;font-size:16px;font-weight:800;color:var(--kraft);padding:12px 0;
+  list-style:none;display:flex;justify-content:space-between;align-items:center}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+";font-size:22px;line-height:1;color:var(--kraft)}
+details[open] summary{border-bottom:1px solid var(--linha)}
+details[open] summary::after{content:"–"}
+details .corpo{padding:10px 0 14px}
+details .card{box-shadow:none;border:1px solid var(--linha)}
+details .corpo.card{box-shadow:none;border:0;border-radius:0;padding:10px 0 14px;margin:0}
+.nota{font-size:13px;color:var(--tinta2);margin-top:6px}
+
+/* Fila de importação OCR */
+.fila-chip{display:inline-flex;align-items:center;gap:4px;padding:4px 8px;cursor:pointer;
+  border-radius:20px;border:1.5px solid var(--borda);background:var(--campo);color:var(--tinta);
+  font-size:10.5px;font-weight:600;white-space:nowrap;transition:all .15s;user-select:none}
+.fila-chip:hover{background:var(--kraft-claro);border-color:var(--kraft)}
+.fila-chip.ativo{background:var(--kraft);border-color:var(--kraft);color:#fff}
+.fila-chip.ok{border-color:#c3e3c5;background:var(--ok-bg);color:var(--ok)}
+.fila-chip.pul{border-color:#f3c1bc;background:var(--alerta-bg);color:var(--alerta);opacity:.75}
+
+@media print{
+  .topo,.tabbar,.acoes,.of .ops,#paneNova,#paneTab{display:none!important}
+  body{background:#fff;padding:0}
+  .of{break-inside:avoid;box-shadow:none;border:1px solid #ccc;border-left:5px solid var(--kraft)}
+}
+</style>
+</head>
+<body>
+<div class="topo">
+  <header class="header">
+    <div class="logo-box"><svg viewBox="0 0 100 100" aria-hidden="true"><rect x="10" y="20" width="80" height="8" rx="4" fill="#1a56a0"/><rect x="10" y="72" width="80" height="8" rx="4" fill="#1a56a0"/><path d="M12,50 C16.75,33 26.25,33 31,50 C35.75,67 45.25,67 50,50 C54.75,33 64.25,33 69,50 C73.75,67 83.25,67 88,50" fill="none" stroke="#1a56a0" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+    <div class="header-txt"><h1>Programação da Onduladeira</h1><p>Prime Ondulados</p></div>
+    <div class="header-dir">
+      <span id="syncChip" title="Estado da ligação com o servidor">○ conectando…</span>
+      <button id="velChip" onclick="trocaAba('tab')" title="Velocidade de produção">60 m/min</button>
+    </div>
+  </header>
+</div>
+<nav class="tabbar">
+  <button id="tabProg" class="on" onclick="trocaAba('prog')">Programação</button>
+  <button id="tabNova" onclick="trocaAba('nova')">Nova OF</button>
+  <button id="tabTab" onclick="trocaAba('tab')">Tabelas</button>
+</nav>
+
+<main>
+  <!-- PROGRAMAÇÃO -->
+  <section class="pane" id="paneProg">
+    <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+      <button id="btnSortProg" class="btn mini sec" onclick="toggleSortProg()">Ordem: nº OF</button>
+    </div>
+    <div id="listaProg"></div>
+    <div class="acoes">
+      <button class="btn sec" onclick="abreColarOCR()">Colar OCR</button>
+      <button class="btn sec" onclick="abreInputFilaOCR()">Fila OCR</button>
+      <button class="btn" onclick="exportaXLSX()">Excel por Bobina</button>
+      <button class="btn" onclick="exportaXLSXporOC()">Excel por OC</button>
+      <button class="btn" onclick="exportaXLSXporMedida()">Excel por Medidas</button>
+      <button class="btn sec" onclick="window.print()">Imprimir</button>
+      <button class="btn perigo" onclick="limpaOFs()">Limpar programação</button>
+    </div>
+  </section>
+
+  <!-- NOVA OF -->
+  <section class="pane" id="paneNova">
+
+    <!-- PAINEL DE FILA OCR -->
+    <div id="filaOCRPanel" style="display:none;margin-bottom:10px">
+      <div class="card" style="border-left:5px solid var(--kraft);padding:12px">
+        <!-- Cabeçalho: título + botões de controle -->
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap">
+          <div>
+            <span style="font-size:16px;font-weight:800;color:var(--kraft)">Fila OCR</span>
+            <span id="filaProgresso" style="font-size:12.5px;color:var(--tinta2);margin-left:10px"></span>
+          </div>
+          <div style="display:flex;gap:5px;flex-wrap:wrap">
+            <button type="button" class="btn mini sec" id="filaBtnAnterior" onclick="navFila(-1)">← Ant</button>
+            <button type="button" class="btn mini sec" id="filaBtnPular" onclick="pulaFila()">Pular</button>
+            <button type="button" class="btn mini sec" id="filaBtnDesmarcar" onclick="desmarcarFila()" style="display:none">↩ Reabrir</button>
+            <button type="button" class="btn mini sec" id="filaBtnProximo" onclick="navFila(1)">Próx →</button>
+            <button type="button" class="btn mini sec" onclick="abreColarOCR()">+ Colar</button>
+            <button type="button" class="btn mini sec" onclick="adicionarFila()">+ Mais</button>
+            <button type="button" class="btn mini perigo" onclick="fechaFila()">✕ Fechar</button>
+          </div>
+        </div>
+        <!-- Arquivo atual + status -->
+        <div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap">
+          <span id="filaStatusBadge" class="tag" style="display:none"></span>
+          <span id="filaArquivoNome" style="font-size:12.5px;color:var(--tinta2);word-break:break-all"></span>
+        </div>
+        <!-- Preview da imagem ou texto do OCR -->
+        <div id="filaPreview" style="margin-top:8px"></div>
+        <!-- Chips de arquivos da fila -->
+        <div id="filaLista" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;max-height:88px;overflow-y:auto;padding:2px 0"></div>
+      </div>
+    </div>
+
+    <form id="formOF" onsubmit="return salvaOF(event)">
+      <div class="card">
+        <input type="hidden" id="fEditId">
+        <div class="row">
+          <div><label>Data do pedido</label><input type="date" id="fData" required oninput="verificaDuplicidade()"></div>
+          <div><label>Nº da OP</label><input type="number" id="fOF" inputmode="numeric" required readonly style="background:var(--linha2);color:var(--tinta2)"></div>
+          <div><label>OC (ordem de compra)</label><input id="fOC" autocomplete="off" placeholder="—" oninput="verificaDuplicidade()"></div>
+        </div>
+        <div class="nota" id="ofCentralView"></div>
+        <div class="nota" id="dupStatus"></div>
+        <div id="avisoDuplicidade"></div>
+        <label>Cliente</label>
+        <input id="fCliente" list="dlClientes" autocomplete="off" required oninput="verificaDuplicidade()">
+        <datalist id="dlClientes"></datalist>
+        <div class="row">
+          <div><label>Produto</label><select id="fProduto" onchange="aoMudarProduto()"></select></div>
+          <div><label>Quantidade de chapas</label><input type="number" id="fQtde" inputmode="numeric" min="1" required oninput="verificaDuplicidade()"></div>
+        </div>
+        <div class="row">
+          <div><label>Largura (mm)</label><input type="number" id="fLarg" inputmode="numeric" min="1" required oninput="recalcula()"></div>
+          <div><label>Comprimento / facão (mm)</label><input type="number" id="fCompr" inputmode="numeric" min="1" required oninput="recalcula()"></div>
+        </div>
+        <label>Slitter / vincadeira (mm, ex.: 147x118x294x118x147 — "x" se liso)</label>
+        <input id="fVinco" value="x" oninput="recalcula()">
+        <div id="avisoVinco"></div>
+        <div id="avisoLimites"></div>
+      </div>
+
+      <div class="card">
+        <h3 style="font-size:17px;font-weight:800">Arranjos por formato de bobina</h3>
+        <div class="rolagem" id="opcoesBobina"></div>
+        <div class="row" style="margin-top:8px">
+          <div><label>Arranjo (facas)</label><input type="number" id="fArranjo" min="1" max="6" value="1" oninput="recalcula()"></div>
+          <div><label>Formato da bobina (mm)</label><input type="number" id="fBobina" inputmode="numeric" oninput="recalcula()"></div>
+        </div>
+        <div class="regua" id="regua"></div>
+      </div>
+
+      <div class="card">
+        <h3 style="font-size:17px;font-weight:800">Composição de papéis</h3>
+        <div id="camposPapeis"></div>
+        <div id="avisoColuna"></div>
+      </div>
+
+      <div class="card">
+        <h3 style="font-size:17px;font-weight:800">Paletização</h3>
+        <div id="paleteInfo"></div>
+        <div class="row">
+          <div><label>Paletes (qtde)</label><input type="number" id="fPalQtde" inputmode="numeric" min="0"></div>
+          <div><label>Palete (medida LxC)</label><input id="fPalMed" placeholder="Padrão"></div>
+        </div>
+        <div class="resumo" id="resumoCalc"></div>
+      </div>
+
+      <div class="acoes">
+        <button class="btn" type="submit" id="btnSalvar">Registrar OP</button>
+        <button class="btn sec" type="button" onclick="limpaForm()">Limpar</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- TABELAS / PARÂMETROS -->
+  <section class="pane" id="paneTab">
+    <details open>
+      <summary>Parâmetros</summary>
+      <div class="corpo card">
+        <div class="row">
+          <div><label>Velocidade (m/min)</label><input type="number" id="pVel" min="1"></div>
+          <div><label>Fator do miolo</label><input type="number" id="pFator" step="0.01"></div>
+        </div>
+        <div class="row">
+          <div><label>Cola simples (g/m²)</label><input type="number" id="pColaS"></div>
+          <div><label>Cola dupla (g/m²)</label><input type="number" id="pColaD"></div>
+        </div>
+        <label>Formatos de bobina disponíveis (mm, separados por vírgula)</label>
+        <input id="pFormatos">
+        <div class="row">
+          <div><label>Larg. mín. chapa</label><input type="number" id="pLargMin"></div>
+          <div><label>Larg. máx. chapa</label><input type="number" id="pLargMax"></div>
+        </div>
+        <div class="row">
+          <div><label>Compr. mín.</label><input type="number" id="pComprMin"></div>
+          <div><label>Compr. máx.</label><input type="number" id="pComprMax"></div>
+        </div>
+        <div class="row">
+          <div><label>Altura pilha (mm)</label><input type="number" id="pPilhaAlt"></div>
+          <div><label>Múlt. onda B</label><input type="number" id="pMultB"></div>
+          <div><label>Múlt. onda C</label><input type="number" id="pMultC"></div>
+          <div><label>Múlt. dupla</label><input type="number" id="pMultD"></div>
+        </div>
+        <div class="row">
+          <div><label>Sobra máx. (mm)</label><input type="number" id="pSobra"></div>
+          <div><label>Folga amarração (mm)</label><input type="number" id="pFolga"></div>
+          <div><label>Paletes padrão</label><input id="pPadroes"></div>
+        </div>
+        <div class="acoes"><button class="btn mini" onclick="salvaParams()">Salvar parâmetros</button></div>
+      </div>
+    </details>
+
+    <details>
+      <summary>Papéis (RCT)</summary>
+      <div class="corpo">
+        <table id="tbPapeis"><thead><tr><th>Papel</th><th>g/m²</th><th>RCT kgf</th><th></th></tr></thead><tbody></tbody></table>
+        <p class="nota">RCT marcado com <span class="est">est.</span> é estimado — confirme com o fornecedor e corrija aqui. Os valores valem para a coluna teórica de todas as OFs.</p>
+        <div class="acoes"><button class="btn mini" onclick="addPapel()">Adicionar papel</button></div>
+      </div>
+    </details>
+
+    <details>
+      <summary>Produtos e receitas</summary>
+      <div class="corpo">
+        <div id="listaProdutos"></div>
+      </div>
+    </details>
+
+    <details>
+      <summary>Dados</summary>
+      <div class="corpo card">
+        <p class="nota">As OFs, tabelas e contadores de OF/OP ficam salvos no servidor e valem para todos os aparelhos (este aparelho guarda só uma cópia). O servidor mantém histórico automático; o backup em arquivo é opcional.</p>
+        <div class="acoes">
+          <button class="btn mini sec" onclick="exportaJSON()">Backup dos dados</button>
+          <button class="btn mini sec" onclick="document.getElementById('impJSON').click()">Restaurar backup</button>
+          <input type="file" id="impJSON" accept=".json" style="display:none" onchange="importaJSON(this)">
+          <button class="btn mini perigo" onclick="zeraTudo()">Apagar tudo</button>
+        </div>
+      </div>
+    </details>
+  </section>
+  <input type="file" id="inputFilaOCR" multiple accept="image/*,.json,.txt" style="display:none" onchange="carregaFilaOCR(this.files)">
+
+  <!-- MODAL: COLAR OCR (texto JSON direto, sem salvar arquivo) -->
+  <div id="colarOCRModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:900;align-items:center;justify-content:center;padding:14px">
+    <div class="card" style="max-width:640px;width:100%;padding:14px;max-height:90vh;overflow:auto">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-size:17px;font-weight:800;color:var(--kraft)">Colar OCR</span>
+        <button type="button" class="btn mini perigo" onclick="fechaColarOCR()">✕ Fechar</button>
+      </div>
+      <p class="nota" style="margin:8px 0">Cole aqui o JSON que o OCR gerou (Ctrl+V). Não precisa salvar em bloco de notas.</p>
+      <textarea id="colarOCRTexto" rows="10" placeholder='[{"Cliente":"…","OC":"…","Itens":[…]}]'
+                style="width:100%;font-family:monospace;font-size:12.5px"></textarea>
+      <div id="colarOCRErro" style="display:none;color:var(--alerta);font-size:12.5px;margin-top:6px"></div>
+      <div class="acoes" style="margin-top:10px">
+        <button type="button" class="btn" onclick="confirmaColarOCR()">Carregar na fila</button>
+        <button type="button" class="btn mini sec" onclick="colaDaAreaTransferencia()">Colar da área de transferência</button>
+        <button type="button" class="btn mini sec" onclick="$('colarOCRTexto').value=''">Limpar</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+
+<script>
+/* Programação Onduladeira Prime — lógica
+   Regras consolidadas com Marciliano (jun/2026):
+   - m² = compr × larg × qtde (metros)
+   - ML = qtde × compr ÷ arranjo (metros de bobina)
+   - Min prod = ML ÷ arranjo ÷ velocidade (cada passada entrega "arranjo" chapas)
+   - Largura útil = larg × arranjo; Ponta = bobina − útil; Refile % = ponta ÷ bobina
+   - Coluna teórica = (RCT capa + RCT miolo×fator + RCT interna) ÷ 10 (dupla: dois miolos×fator)
+   - Fator do miolo: 1,30 para QUALQUER onda (regra prática da fábrica)
+   - Gramatura da receita = Σ camadas (miolos×fator) + cola (15 simples / 20 dupla) —
+     só para comparar com a nominal (perdaGram), não define o peso do OF
+   - kg = m² × gramatura NOMINAL da tabela de especificação (busca exata por
+     produto+onda: gramB/gramC de db.produtos) ÷ 1000 — peso oficial do OF,
+     igual pra todo mundo que produzir o mesmo código, não muda com a receita
+   - Coluna abaixo do mínimo: ALERTA, não bloqueia
+   - Sugestão de bobina: menor formato com ponta ≥ 20 mm
+   - Canceladas: vermelho, fora dos somatórios                                  */
+
+/* Slitter/vincadeira nova: 4 pares de vincos = 8 vincos no total. O limite depende de
+   quantos vincos cada chapa usa: vincos por chapa × arranjo não pode passar de LIMITE_VINCOS.
+   Vincos por chapa = nº de medidas do vinco − 1.
+   "93x190x93" = 2 vincos → até 4 chapas (4×2=8). "147x118x294x118x147" = 4 vincos → até 2 chapas.
+   Sem vinco, não é afetado (até MAX_ARRANJO chapas).
+   A tabela de arranjos mostra todas as opções para escolha manual; só a seleção
+   AUTOMÁTICA respeita o limite de vincos. */
+const LIMITE_VINCOS = 8;
+const MAX_ARRANJO = 4;
+
+const KEY = 'prime_of_v1';
+
+const SEED = {
+  params: { velocidade: 60, fatorMiolo: 1.3, colaSimples: 15, colaDupla: 20,
+    formatos: Array.from({ length: 23 }, (_, i) => 500 + i * 50),  // 500 a 1600, de 50 em 50
+    limites: { largMin: 280, largMax: 1580, comprMin: 500, comprMax: 3000 },
+    palete: { altura: 1220, multB: 33, multC: 26, multD: 16, sobra: 200, padroes: [1000, 1100] } },
+  papeis: [
+    { cod: 'TLQ95',  g: 95,  rct: 11 },
+    { cod: 'TPQ100', g: 100, rct: 8 },
+    { cod: 'TLQ100', g: 100, rct: 8,  est: true },
+    { cod: 'TLQ110', g: 110, rct: 15 },
+    { cod: 'TLQ120', g: 120, rct: 19, est: true },
+    { cod: 'TLQ125', g: 125, rct: 19 },
+    { cod: 'TLQ135', g: 135, rct: 21, est: true },
+    { cod: 'TLQ140', g: 140, rct: 24 },
+    { cod: 'TLQ145', g: 145, rct: 24, est: true },
+    { cod: 'TLQ165', g: 165, rct: 27 },
+    { cod: 'TLQ170', g: 170, rct: 28, est: true },
+    { cod: 'Mi100',  g: 100, rct: 8 },
+    { cod: 'Ms100',  g: 100, rct: 11 },
+    { cod: 'Ms110',  g: 110, rct: 14 },
+    { cod: 'Ms145',  g: 145, rct: 23 },
+    { cod: 'Ms165',  g: 165, rct: 25 },
+    { cod: 'WTL120', g: 120, rct: 19 },
+    { cod: 'WTL150', g: 150, rct: 24 },
+    { cod: 'KSZ100', g: 100, rct: 12 },
+    { cod: 'KSZ110', g: 110, rct: 15 },
+    { cod: 'KSZ125', g: 125, rct: 17 },
+    { cod: 'KSZ145', g: 145, rct: 24 },
+    { cod: 'KSZ170', g: 170, rct: 31 },
+    { cod: 'PQi100', g: 100, rct: 10, est: true },
+    { cod: 'PQi120', g: 120, rct: 17, est: true }
+  ],
+  /* tipo: S = onda simples (capa, miolo, interna)  D = dupla (CE, mioloC, intermediária, mioloB, CI)
+     colMin em kgf/cm; gramB/gramC = gramatura nominal de venda (tabela de especificação) */
+  ofAtual: null, // nº de OF (Ordem de Fabricação/FSC) reservado para a programação em aberto neste aparelho
+  produtos: [
+    { cod: 'P25',  tipo: 'S', ondas: ['B', 'C'], colMin: 2.5, gramB: 320, gramC: 330, rec: ['TPQ100', 'TPQ100', 'TPQ100'] },
+    { cod: 'P30',  tipo: 'S', ondas: ['B', 'C'], colMin: 3.0, gramB: 330, gramC: 340, rec: ['TPQ100', 'TPQ100', 'TPQ100'] },
+    { cod: 'P35',  tipo: 'S', ondas: ['B', 'C'], colMin: 3.5, gramB: 345, gramC: 354, rec: ['TLQ110', 'TPQ100', 'TPQ100'] },
+    { cod: 'P40',  tipo: 'S', ondas: ['B', 'C'], colMin: 4.0, gramB: 355, gramC: 365, rec: ['TLQ110', 'TPQ100', 'TLQ110'] },
+    { cod: 'P45',  tipo: 'S', ondas: ['B', 'C'], colMin: 4.5, gramB: 365, gramC: 375, rec: ['TLQ125', 'TPQ100', 'TPQ100'] },
+    { cod: 'P50',  tipo: 'S', ondas: ['B', 'C'], colMin: 5.0, gramB: 388, gramC: 400, rec: ['TLQ120', 'TLQ110', 'TLQ110'] },
+    { cod: 'P55',  tipo: 'S', ondas: ['B', 'C'], colMin: 5.5, gramB: 400, gramC: 409, rec: ['TLQ120', 'TLQ110', 'TLQ110'] },
+    { cod: 'P60',  tipo: 'S', ondas: ['B', 'C'], colMin: 6.0, gramB: 428, gramC: 440, rec: ['TLQ125', 'TLQ125', 'TLQ125'] },
+    { cod: 'P70',  tipo: 'S', ondas: ['B', 'C'], colMin: 7.0, gramB: 458, gramC: 470, rec: ['TLQ140', 'TLQ125', 'TLQ140'] },
+    { cod: 'P80',  tipo: 'S', ondas: ['B', 'C'], colMin: 8.0, gramB: 514, gramC: 528, rec: ['TLQ165', 'TLQ145', 'TLQ145'] },
+    { cod: 'P85',  tipo: 'S', ondas: ['B', 'C'], colMin: 8.5, gramB: 560, gramC: 576, rec: ['TLQ165', 'TLQ165', 'TLQ165'] },
+    { cod: 'PW40', tipo: 'S', ondas: ['B'],      colMin: 4.0, gramB: 365, gramC: 375, rec: ['WTL120', 'TPQ100', 'TLQ100'] },
+    { cod: 'PW50', tipo: 'S', ondas: ['B'],      colMin: 5.0, gramB: 400, gramC: 420, rec: ['WTL120', 'TLQ110', 'TLQ110'] },
+    { cod: 'PK40', tipo: 'S', ondas: ['B'],      colMin: 4.0, gramB: 345, gramC: 355, rec: ['KSZ100', 'TLQ110', 'TLQ110'] },
+    { cod: 'PK45', tipo: 'S', ondas: ['B'],      colMin: 4.5, gramB: 378, gramC: 389, rec: ['KSZ110', 'TLQ110', 'TLQ110'] },
+    { cod: 'PK50', tipo: 'S', ondas: ['B'],      colMin: 5.0, gramB: 408, gramC: 419, rec: ['KSZ110', 'TLQ110', 'TLQ125'] },
+    { cod: 'PK70', tipo: 'S', ondas: ['B'],      colMin: 7.0, gramB: 448, gramC: 460, rec: ['KSZ125', 'TLQ145', 'TLQ125'] },
+    { cod: 'PK80', tipo: 'S', ondas: ['B'],      colMin: 8.0, gramB: 504, gramC: 518, rec: ['KSZ145', 'TLQ145', 'TLQ145'] },
+    { cod: 'P50D', tipo: 'D', ondas: ['D'], colMin: 5.0, gramB: 538, gramC: 538, rec: ['TPQ100', 'TPQ100', 'TPQ100', 'TPQ100', 'TPQ100'] },
+    { cod: 'P55D', tipo: 'D', ondas: ['D'], colMin: 5.5, gramB: 568, gramC: 568, rec: ['TLQ100', 'TLQ100', 'TLQ100', 'TLQ100', 'TLQ100'] },
+    { cod: 'P70D', tipo: 'D', ondas: ['D'], colMin: 7.0, gramB: 632, gramC: 632, rec: ['TLQ110', 'TLQ110', 'TPQ100', 'TPQ100', 'TLQ110'] },
+    { cod: 'P80D', tipo: 'D', ondas: ['D'], colMin: 8.0, gramB: 662, gramC: 662, rec: ['TLQ125', 'TLQ110', 'TPQ100', 'TPQ100', 'TLQ125'] }
+  ],
+  ofs: []
+};
+
+const CAMADAS_S = ['Capa forradeira', 'Miolo', 'Capa interna'];
+const CAMADAS_D = ['Capa externa', 'Miolo C', 'Capa intermediária', 'Miolo B', 'Capa interna'];
+const MIOLOS_S = [1];           // índices que são miolo (× fator)
+const MIOLOS_D = [1, 3];
+
+let db;
+let sortProgView = 'of'; // 'of' = por nº da OF | 'prod' = por cliente/bobina (otimização)
+
+/* ---------- persistência ---------- */
+function carrega() {
+  try { db = JSON.parse(localStorage.getItem(KEY)); } catch (e) { db = null; }
+  if (!db || !db.params) db = JSON.parse(JSON.stringify(SEED));
+  migraDb();
+}
+/* Migrações de versão do db — rodam na cópia local e também depois de receber
+   o estado do servidor (que pode ter sido criado por uma versão mais antiga). */
+function migraDb() {
+  if (!db.v || db.v < 2) {  // migração: formatos de 50 em 50 + limites da máquina
+    db.params.formatos = SEED.params.formatos.slice();
+    db.params.limites = JSON.parse(JSON.stringify(SEED.params.limites));
+    db.v = 2;
+  }
+  if (db.v < 3) {  // migração: cálculo de paletes
+    db.params.palete = JSON.parse(JSON.stringify(SEED.params.palete));
+    db.v = 3;
+  }
+  if (db.v < 4) {  // migração: receita P25 → TPQ100
+    const _p25 = db.produtos.find(p => p.cod === 'P25');
+    if (_p25) _p25.rec = ['TPQ100', 'TPQ100', 'TPQ100'];
+    db.v = 4;
+  }
+  if (db.v < 5) {  // migração: TLQ95 → TPQ100 em todas as receitas
+    db.produtos.forEach(p => { p.rec = p.rec.map(r => r === 'TLQ95' ? 'TPQ100' : r); });
+    db.v = 5;
+  }
+  if (db.v < 6) {  // migração: OF única por programação (exigência FSC)
+    if (db.ofAtual === undefined) db.ofAtual = null;
+    db.v = 6;
+  }
+  if (db.v < 7) {  // migração: comprimento mínimo do facão (500 mm) e largura mínima do slitter (55 mm)
+    db.params.limites.comprMin = 500;
+    db.params.limites.vincoMin = 55;
+    db.v = 7;
+  }
+  if (db.v < 8) {  // migração: OP sequencial e imutável, gerada localmente (só este computador)
+    if (db.ultimaOP === undefined) db.ultimaOP = 262109; // próxima OP a ser usada: 262110
+    db.v = 8;
+  }
+  if (db.v < 9) {  // migração: formatos de bobina menores (500/550/600/650) — máquina passou a rodar com bobina de 500
+    [500, 550, 600, 650].forEach(f => { if (!db.params.formatos.includes(f)) db.params.formatos.push(f); });
+    db.params.formatos.sort((a, b) => a - b);
+    db.v = 9;
+  }
+  if (db.v < 10) {  // migração: nova slitter/vincadeira (8 vincos) — largura 280–1580 mm, comprimento mín. 300 mm
+    db.params.limites.largMin = 280;
+    db.params.limites.largMax = 1580;
+    db.params.limites.comprMin = 300;
+    db.v = 10;
+  }
+  if (db.v < 11) {  // migração: nova vincadeira não tem distância mínima entre vincos
+    db.params.limites.vincoMin = 0;
+    db.v = 11;
+  }
+  if (db.v < 12) {  // migração: comprimento mínimo da máquina passou a ser 500 mm
+    db.params.limites.comprMin = 500;
+    db.v = 12;
+  }
+  salva();
+}
+function salva() { localStorage.setItem(KEY, JSON.stringify(db)); }
+
+/* ---------- servidor (VPS) ----------
+   O estado do app — programação em aberto, papéis/produtos/parâmetros e os
+   contadores — fica no servidor (n8n.mcamargo.uk/onduladeira, serviço
+   onduladeira-api na VPS) e vale para todos os aparelhos. O número de OF
+   (FSC, uma por programação) e o de OP (um por pedido, sequencial, imutável e
+   irrepetível) só são gerados lá, na mesma operação que grava o pedido: dois
+   aparelhos salvando ao mesmo tempo nunca recebem o mesmo número.
+   Este aparelho mantém uma cópia no localStorage (para abrir rápido e mostrar
+   algo sem internet), mas lançar/editar/excluir exige o servidor. */
+const API = 'https://n8n.mcamargo.uk/onduladeira';
+let revServidor = null;      // última revisão do servidor aplicada aqui
+let salvandoNoServidor = 0;  // >0 enquanto há gravação em andamento (pausa a atualização automática)
+let idNovoPendente = null;   // id do pedido novo em tentativa — o reenvio não duplica
+
+function statusSync(ok, txt) {
+  const el = $('syncChip');
+  if (!el) return;
+  el.textContent = (ok ? '● ' : '○ ') + txt;
+  el.style.color = ok ? '#b4f0c0' : '#ffcdc4';
+}
+
+async function api(rota, corpo) {
+  let resp;
+  try {
+    resp = await fetch(API + rota, corpo === undefined ? { cache: 'no-store' } : {
+      method: 'POST', headers: { 'Content-Type': 'text/plain;charset=UTF-8' }, body: JSON.stringify(corpo)
+    });
+  } catch (e) {
+    statusSync(false, 'sem conexão');
+    throw new Error('Sem conexão com o servidor. Verifique a internet e tente de novo.');
+  }
+  const j = await resp.json().catch(() => ({}));
+  if (!resp.ok || j.erro) throw new Error(j.erro || ('Falha no servidor (HTTP ' + resp.status + ').'));
+  statusSync(true, 'online');
+  return j;
+}
+
+/* Copia o estado do servidor para o db local e redesenha. */
+function aplicaEstado(est) {
+  const antes = JSON.stringify([db.params, db.papeis, db.produtos]);
+  if (est.config) {
+    db.params = est.config.params; db.papeis = est.config.papeis; db.produtos = est.config.produtos;
+    db.v = est.config.v || 0;
+  }
+  db.ofs = est.ofs || [];
+  db.ofAtual = est.ofAtual || null;
+  db.ultimaOP = est.ultimaOP;
+  db.ultimaOF = est.ultimaOF;
+  revServidor = est.rev;
+  const vAntes = db.v;
+  migraDb();                       // salva() já é chamado lá dentro
+  if (est.config && vAntes !== db.v) enviaConfig();   // servidor estava numa versão antiga
+  desenhaProg();
+  atualizaOfCentralView();
+  if (!$('fEditId').value) sugereOP();
+  const mudouCfg = antes !== JSON.stringify([db.params, db.papeis, db.produtos]);
+  const painel = $('paneTab');
+  if (mudouCfg && painel && painel.classList.contains('on') &&
+      !(document.activeElement && painel.contains(document.activeElement))) desenhaTabelas();
+}
+
+/* Grava uma operação no servidor e aplica o estado devolvido. */
+async function mutaServidor(rota, corpo) {
+  salvandoNoServidor++;
+  try {
+    const j = await api(rota, corpo);
+    aplicaEstado(j.estado);
+    return j;
+  } finally { salvandoNoServidor--; }
+}
+
+async function enviaConfig() {
+  salvandoNoServidor++;
+  try {
+    const j = await api('/config', { db: { v: db.v, params: db.params, papeis: db.papeis, produtos: db.produtos } });
+    revServidor = j.estado.rev;
+  } catch (e) {
+    alert('Não foi possível salvar as tabelas no servidor: ' + e.message);
+  } finally { salvandoNoServidor--; }
+}
+/* Alteração de papéis/produtos/parâmetros: cópia local + servidor. */
+function salvaConfig() { salva(); enviaConfig(); }
+
+async function sincronizaInicial() {
+  try {
+    const est = await api('/estado');
+    if (!est.inicializado) return inicializaServidor();
+    aplicaEstado(est);
+  } catch (e) { statusSync(false, 'offline'); }
+}
+
+/* Primeira vez: o servidor ainda está vazio. Os dados do aparelho principal
+   (OFs, tabelas, contadores) sobem uma única vez. */
+async function inicializaServidor() {
+  const msg = 'O servidor ainda não tem dados.\n\nEnviar os dados DESTE aparelho (' + db.ofs.length +
+    ' OFs na programação, última OP ' + (db.ultimaOP || 0) + ') para o servidor?\n\n' +
+    'Faça isso SOMENTE no computador principal, onde estão os dados corretos. Depois disso todos os aparelhos passam a usar o servidor.';
+  if (!confirm(msg)) { statusSync(false, 'servidor vazio'); return; }
+  try {
+    const j = await api('/iniciar', { db });
+    aplicaEstado(j.estado);
+  } catch (e) {
+    alert('Não foi possível inicializar o servidor: ' + e.message);
+    sincronizaInicial();
+  }
+}
+
+/* Atualização automática: outro aparelho lançou/alterou algo? */
+async function verificaServidor() {
+  if (salvandoNoServidor > 0 || document.hidden) return;
+  try {
+    const r = await api('/rev');
+    if (!r.inicializado || r.rev === revServidor) return;
+    const est = await api('/estado');
+    if (salvandoNoServidor > 0) return;
+    aplicaEstado(est);
+  } catch (e) { /* o chip já mostra "sem conexão"; mantém o que está na tela */ }
+}
+
+/* Próxima OP — só leitura, mostrada no campo (não editável) como previsão.
+   O número definitivo é dado pelo servidor ao salvar. */
+function proximaOpLocal() { return (db.ultimaOP || 0) + 1; }
+
+/* ---------- utilitários ---------- */
+const $ = id => document.getElementById(id);
+const fmt = (n, d = 1) => (n == null || isNaN(n)) ? '—' : n.toLocaleString('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d });
+const fmt0 = n => fmt(n, 0);
+function papel(cod) { return db.papeis.find(p => p.cod === cod); }
+function produto(cod) { return db.produtos.find(p => p.cod === cod); }
+function poCodigo(of) { return of.produto + (of.onda === 'D' ? '' : of.onda); }
+function dataBR(iso) {
+  if (!iso) return '—';
+  const [a, m, d] = iso.split('-');
+  return d + '/' + m + '/' + a;
+}
+
+/* ---------- cálculos por OF ---------- */
+function calcOF(of) {
+  const p = produto(of.produto);
+  const larg = of.larg / 1000, compr = of.compr / 1000;
+  const arr = of.arranjo || 1, bob = of.bobina || 0;
+  const c = {};
+  c.m2 = compr * larg * of.qtde;
+  c.ml = of.qtde * compr / arr;
+  c.min = c.ml / arr / db.params.velocidade;
+  c.lu = larg * arr;                       // m
+  c.ponta = bob - c.lu * 1000;             // mm
+  c.refile = bob ? c.ponta / bob : null;
+
+  const fator = db.params.fatorMiolo;
+  const miolos = p.tipo === 'D' ? MIOLOS_D : MIOLOS_S;
+  const cola = p.tipo === 'D' ? db.params.colaDupla : db.params.colaSimples;
+  let gram = cola, col = 0, falta = false;
+  (of.papeis || []).forEach((cod, i) => {
+    const pp = papel(cod);
+    if (!pp) { falta = true; return; }
+    const f = miolos.includes(i) ? fator : 1;
+    gram += pp.g * f;
+    col += pp.rct * f;
+  });
+  c.gram = falta ? null : gram;                 // g/m² (receita real: camadas + cola, só QC)
+  c.coluna = falta ? null : col / 10;           // kgf/cm
+  c.colMin = p.colMin;
+  c.colunaOK = c.coluna == null ? null : c.coluna >= p.colMin - 1e-9;
+  const nominal = p.tipo === 'D' ? p.gramB : (of.onda === 'C' ? p.gramC : p.gramB);
+  c.gramNominal = nominal;
+  // Peso oficial do OF = tabela de especificação (busca exata pelo código do
+  // produto + onda), não a soma da receita de papéis: a receita varia OF a
+  // OF e serve só para comparar (perdaGram), mas o peso do romaneio/etiqueta
+  // tem que ser sempre o mesmo para o mesmo código, como no catálogo.
+  c.kg = nominal ? c.m2 * nominal / 1000 : null;
+  c.perdaGram = (c.gram != null && nominal) ? (c.gram - nominal) / nominal : null;
+  return c;
+}
+
+function temVincoReal(vinco) {
+  const t = (vinco || '').trim().toLowerCase();
+  return !!t && t !== 'x' && t !== 's/v';
+}
+
+/* quantos vincos a chapa usa = nº de medidas − 1.
+   Ex.: "93x190x93" (3 medidas) = 2 vincos.
+   Ex.: "88x109x176x109x88" (5 medidas) = 4 vincos. */
+function contaVincos(vinco) {
+  if (!temVincoReal(vinco)) return 0;
+  const t = vinco.trim().toLowerCase();
+  const partes = t.split(/[x×\s]+/).map(Number).filter(n => !isNaN(n) && n > 0);
+  return Math.max(0, partes.length - 1);
+}
+
+function validaVinco(vinco, largMM) {
+  const t = (vinco || '').trim().toLowerCase();
+  if (!t || t === 'x' || t === 's/v') return { ok: true, soma: null };
+  const partes = t.split(/[x×\s]+/).map(Number).filter(n => !isNaN(n) && n > 0);
+  if (!partes.length) return { ok: true, soma: null };
+  const soma = partes.reduce((a, b) => a + b, 0);
+  return { ok: Math.abs(soma - largMM) <= 2, soma, minDist: Math.min(...partes) };
+}
+
+/* arranjos por formato: quantas chapas saem em cada bobina (ponta mínima de 20 mm) */
+function arranjosPorFormato(largMM) {
+  if (!largMM) return [];
+  return db.params.formatos
+    .map(f => {
+      let a = Math.floor((f - 20) / largMM);
+      if (a > MAX_ARRANJO) a = MAX_ARRANJO; // limite da máquina
+      return a >= 1 ? { bobina: f, arranjo: a, ponta: f - a * largMM, refile: (f - a * largMM) / f } : null;
+    })
+    .filter(Boolean);
+}
+
+function melhor(largMM, maxArranjo) {
+  const cap = maxArranjo || MAX_ARRANJO;
+  const t = arranjosPorFormato(largMM).filter(x => x.arranjo <= cap);
+  if (!t.length) return null;
+
+  // Prioriza: 1º maior quantidade de chapas (arranjo); 2º menor refile em caso de empate
+  return t.reduce((m, x) => {
+    if (x.arranjo > m.arranjo) return x;
+    if (x.arranjo === m.arranjo && x.refile < m.refile) return x;
+    return m;
+  });
+}
+
+/* ---------- abas ---------- */
+function trocaAba(qual) {
+  ['prog', 'nova', 'tab'].forEach(t => {
+    $('pane' + t[0].toUpperCase() + t.slice(1).replace('prog', 'rog')).classList.toggle('on', t === qual);
+    $('tab' + t[0].toUpperCase() + t.slice(1)).classList.toggle('on', t === qual);
+  });
+  if (qual === 'prog') desenhaProg();
+  if (qual === 'tab') desenhaTabelas();
+  if (qual === 'nova') { atualizaOfCentralView(); carregaDuplicidade(); }
+}
+
+/* ---------- formulário Nova OF ---------- */
+function montaProdutos() {
+  const sel = $('fProduto');
+  sel.innerHTML = '';
+  db.produtos.forEach(p => p.ondas.forEach(o => {
+    const op = document.createElement('option');
+    op.value = p.cod + '|' + o;
+    op.textContent = p.cod + (o === 'D' ? ' (dupla)' : o);
+    sel.appendChild(op);
+  }));
+}
+
+function aoMudarProduto() {
+  const [cod] = $('fProduto').value.split('|');
+  const p = produto(cod);
+  const nomes = p.tipo === 'D' ? CAMADAS_D : CAMADAS_S;
+  const cont = $('camposPapeis');
+  cont.innerHTML = '';
+  nomes.forEach((nome, i) => {
+    const lb = document.createElement('label'); lb.textContent = nome;
+    const sel = document.createElement('select');
+    sel.id = 'fPapel' + i;
+    sel.onchange = recalcula;
+    db.papeis.forEach(pp => {
+      const op = document.createElement('option');
+      op.value = pp.cod;
+      op.textContent = pp.cod + ' (' + pp.g + ' g · RCT ' + pp.rct + (pp.est ? ' est.' : '') + ')';
+      sel.appendChild(op);
+    });
+    sel.value = (p.rec && p.rec[i] && papel(p.rec[i])) ? p.rec[i] : db.papeis[0].cod;
+    cont.appendChild(lb); cont.appendChild(sel);
+  });
+  recalcula();
+}
+
+function ofDoForm() {
+  const [cod, onda] = $('fProduto').value.split('|');
+  const p = produto(cod);
+  const n = p.tipo === 'D' ? 5 : 3;
+  const papeis = [];
+  for (let i = 0; i < n; i++) papeis.push($('fPapel' + i) ? $('fPapel' + i).value : null);
+  return {
+    id: $('fEditId').value || null,
+    data: $('fData').value, cliente: $('fCliente').value.trim(),
+    of: $('fOF').value, oc: $('fOC').value.trim(), produto: cod, onda,
+    qtde: +$('fQtde').value || 0, larg: +$('fLarg').value || 0, compr: +$('fCompr').value || 0,
+    vinco: $('fVinco').value.trim() || 'x',
+    arranjo: +$('fArranjo').value || 1, bobina: +$('fBobina').value || 0,
+    papeis, palQtde: $('fPalQtde').value, palMed: $('fPalMed').value.trim(),
+    cancelada: false
+  };
+}
+/* Novas regras de paletização Prime (Preenchimento em Grade):
+   - Direção da Largura da Carreta: Máximo rígido de 1200mm (para viajar em dupla).
+   - Direção do Comprimento da Carreta: Até 2200mm (aproveitando os 14 metros da carroceria).
+   - Calcula a melhor ocupação testando a chapa na Posição Normal e na Posição Girada.
+   - Folga de amarração rígida de 20mm no total da madeira (10mm de cada lado). */
+function calcPalete(of) {
+  const P = db.params.palete;
+  if (!P || !of.larg || !of.compr || !of.qtde) return null;
+
+  // 1. Quantidade por pilha (altura cheia de 1220 mm sem arredondamentos intermediários)
+  const mult = of.onda === 'D' ? P.multD : (of.onda === 'C' ? P.multC : P.multB);
+  let pilha = Math.floor((1220 / 100) * mult);
+  if (pilha < 1) pilha = 1;
+
+  const folga = 20; 
+  let melhor = null;
+
+  // Cenário A: POSIÇÃO NORMAL (Largura da chapa fica na largura da carreta)
+  let pLargN = Math.floor((1200 - folga) / of.larg);
+  if (pLargN < 1) pLargN = 1;
+  if (pLargN > 4) pLargN = 4; // Limite técnico por bloco de amarrações
+
+  let pComprN = Math.floor((2200 - folga) / of.compr);
+  if (pComprN < 1) pComprN = 1;
+
+  let totalPNormal = pLargN * pComprN;
+  let dimLargN = (pLargN * of.larg) + folga;
+  let dimComprN = (pComprN * of.compr) + folga;
+
+  if (dimLargN <= 1200 && dimComprN <= 2200) {
+    melhor = { n: totalPNormal, larg: dimLargN, compr: dimComprN, girado: false };
+  }
+
+  // Cenário B: POSIÇÃO GIRADA (Comprimento da chapa fica na largura da carreta)
+  let pLargG = Math.floor((1200 - folga) / of.compr);
+  if (pLargG < 1) pLargG = 1;
+
+  let pComprG = Math.floor((2200 - folga) / of.larg);
+  if (pComprG < 1) pComprG = 1;
+  if (pComprG > 4) pComprG = 4;
+
+  let totalPGirado = pLargG * pComprG;
+  let dimLargG = (pLargG * of.compr) + folga;
+  let dimComprG = (pComprG * of.larg) + folga;
+
+  // Se a posição girada conseguir colocar mais pilhas no mesmo palete, ela é escolhida
+  if (dimLargG <= 1200 && dimComprG <= 2200) {
+    if (!melhor || totalPGirado > melhor.n) {
+      melhor = { n: totalPGirado, larg: dimLargG, compr: dimComprG, girado: true };
+    }
+  }
+
+  // 2. Se nenhum arranjo couber nos limites (chapa monstro), assume 1 pilha padrão
+  if (!melhor) {
+    melhor = { n: 1, larg: of.larg + folga, compr: of.compr + folga, girado: false };
+  }
+
+  // 3. Cálculos de volumes finais
+  const porPalete = pilha * melhor.n;
+  const totalPaletes = Math.ceil(of.qtde / porPalete);
+
+  // 4. Verificação com os paletes padrão rígidos (1000x1000 e 1010x1010)
+  const padroes = [1000, 1010];
+  const pad = padroes.find(p => 
+    melhor.larg <= p + 200 && melhor.larg >= p - 50 &&
+    melhor.compr <= p + 200 && melhor.compr >= p - 50
+  );
+
+  if (pad) {
+    return {
+      n: melhor.n,
+      padrao: true,
+      pad,
+      medida: "Padrão " + pad + "x" + pad + (melhor.girado ? " (Girado)" : ""),
+      pilha,
+      porPalete,
+      paletes: totalPaletes
+    };
+  }
+
+  return {
+    n: melhor.n,
+    padrao: false,
+    pad: null,
+    medida: melhor.larg + "x" + melhor.compr,
+    pilha,
+    porPalete,
+    paletes: totalPaletes
+  };
+}
+function usaPalete() {
+  const s = calcPalete(ofDoForm());
+  if (!s) return;
+  $('fPalQtde').value = s.paletes;
+  $('fPalMed').value = s.medida;
+}
+
+function escolheBobina(a, b) { $('fArranjo').value = a; $('fBobina').value = b; recalcula(); }
+
+function recalcula() {
+  const of = ofDoForm();
+  // tabela: arranjos por formato de bobina (mostra sempre todas as opções)
+  const tab = arranjosPorFormato(of.larg);
+  const nv = contaVincos(of.vinco);
+  const capArranjo = nv > 0
+    ? Math.max(1, Math.min(MAX_ARRANJO, Math.floor(LIMITE_VINCOS / nv)))
+    : MAX_ARRANJO;
+  const top = melhor(of.larg, capArranjo);
+  const box = $('opcoesBobina');
+  if (tab.length) {
+    let h = '<table class="tbArr"><thead><tr><th>Bobina</th><th>Arranjos</th><th>Ponta</th><th>Refile</th></tr></thead><tbody>';
+    tab.forEach(s => {
+      const sel = s.bobina === of.bobina && s.arranjo === of.arranjo;
+      const best = top && s.bobina === top.bobina;
+      h += '<tr class="' + (sel ? 'sel ' : '') + (best ? 'best' : '') +
+        '" onclick="escolheBobina(' + s.arranjo + ',' + s.bobina + ')">' +
+        '<td><b>' + s.bobina + '</b></td><td>' + s.arranjo + ' × ' + of.larg + '</td>' +
+        '<td>' + fmt0(s.ponta) + ' mm</td><td>' + fmt(s.refile * 100, 1) + '%</td></tr>';
+    });
+    box.innerHTML = h + '</tbody></table>';
+  } else box.innerHTML = '';
+  if (top && (!of.bobina || !of.arranjo)) {
+    $('fArranjo').value = top.arranjo; $('fBobina').value = top.bobina;
+    return recalcula();
+  }
+
+  // limites da máquina (Onduladeira Prime 160)
+  const L = db.params.limites || {};
+  const fora = [];
+  if (of.larg && L.largMin && of.larg < L.largMin) fora.push('largura abaixo do mínimo da máquina (' + L.largMin + ' mm)');
+  if (of.larg && L.largMax && of.larg > L.largMax) fora.push('largura acima do máximo da máquina (' + L.largMax + ' mm)');
+  if (of.compr && L.comprMin && of.compr < L.comprMin) fora.push('comprimento de ' + of.compr + ' mm — abaixo de ' + L.comprMin + ' mm o nosso facão não faz');
+  if (of.compr && L.comprMax && of.compr > L.comprMax) fora.push('comprimento acima do máximo (' + L.comprMax + ' mm)');
+  $('avisoLimites').innerHTML = fora.length
+    ? '<div class="aviso ruim">⚠️ Fora dos limites técnicos: ' + fora.join('; ') + '.</div>' : '';
+
+  const c = calcOF(of);
+
+  // régua da bobina
+  const rg = $('regua');
+  if (of.bobina && of.larg) {
+    let chapas = '';
+    for (let i = 0; i < of.arranjo; i++) {
+      const w = (of.larg / of.bobina) * 100, x = i * w;
+      chapas += '<div class="chapa" style="left:' + x + '%;width:' + w + '%"><span>' + of.larg + '</span></div>';
+    }
+    rg.innerHTML = '<div class="barra">' + chapas + '</div>' +
+      '<div class="legenda"><span>Bobina <b>' + of.bobina + ' mm</b></span>' +
+      '<span>Útil <b>' + fmt0(c.lu * 1000) + '</b> · Ponta <b>' + fmt0(c.ponta) + ' mm</b> · Refile <b>' +
+      (c.refile == null ? '—' : fmt(c.refile * 100, 1) + '%') + '</b></span></div>';
+  } else rg.innerHTML = '';
+
+  // vinco
+  const v = validaVinco(of.vinco, of.larg);
+  let avV = '';
+  if (!v.ok && v.soma != null)
+    avV = '<div class="aviso ruim">A soma dos vincos (' + v.soma + ' mm) não fecha com a largura (' + of.larg + ' mm). Confira as posições.</div>';
+  else if (nv > 0 && nv * of.arranjo > LIMITE_VINCOS)
+    avV = '<div class="aviso ruim">⚠️ Este arranjo precisa de ' + (nv * of.arranjo) +
+      ' vincos (' + nv + ' × ' + of.arranjo + '), mas a máquina tem no máximo ' + LIMITE_VINCOS +
+      '. Reduza o arranjo.</div>';
+  $('avisoVinco').innerHTML = avV;
+
+  // coluna
+  const av = $('avisoColuna');
+  if (c.coluna == null) av.innerHTML = '';
+  else if (c.colunaOK) av.innerHTML = '<div class="aviso bom">Coluna teórica ' + fmt(c.coluna, 2) +
+    ' kgf/cm — atende o mínimo de ' + fmt(c.colMin, 1) + ' do ' + poCodigo(of) + '.</div>';
+  else av.innerHTML = '<div class="aviso ruim">⚠️ Atenção: composição abaixo da coluna mínima. Coluna estimada: ' +
+    fmt(c.coluna, 2) + ' kgf/cm. Mínimo exigido para ' + poCodigo(of) + ': ' + fmt(c.colMin, 1) + ' kgf/cm.</div>';
+
+  // palete
+  const sp = calcPalete(of);
+  const pi = $('paleteInfo');
+  if (sp) {
+    const ondaTxt = of.onda === 'D' ? 'dupla' : 'onda ' + of.onda;
+    pi.innerHTML = '<div class="aviso bom">Sugestão: pilha de <b>' + sp.pilha + '</b> chapas (1,22 m · ' + ondaTxt +
+      ') · <b>' + sp.n + '</b> pilha' + (sp.n > 1 ? 's' : '') + ' por palete ' +
+      (sp.padrao ? 'padrão ' + (sp.pad / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : 'sob medida ' + sp.medida) +
+      ' · <b>' + sp.paletes + '</b> palete' + (sp.paletes > 1 ? 's' : '') +
+      ' &nbsp;<button type="button" class="btn mini" onclick="usaPalete()">Usar</button></div>';
+    if (!$('fPalQtde').value && !$('fPalMed').value) { $('fPalQtde').value = sp.paletes; $('fPalMed').value = sp.medida; }
+  } else pi.innerHTML = '';
+
+  // resumo
+  $('resumoCalc').innerHTML =
+    metro('m²', fmt(c.m2, 1)) + metro('Metros lineares', fmt(c.ml, 1)) +
+    metro('Minutos prod.', fmt(c.min, 1)) + metro('Peso (kg)', c.kg == null ? '—' : fmt(c.kg, 1)) +
+    metro('Gramatura g/m²', c.gramNominal == null ? '—' : fmt0(c.gramNominal) + ' <small>tabela</small>' + (c.gram != null ? ' / ' + fmt0(c.gram) + ' <small>receita</small>' : '')) +
+    metro('Coluna kgf/cm', c.coluna == null ? '—' : fmt(c.coluna, 2));
+  function metro(t, v) { return '<div class="m"><b>' + v + '</b><span>' + t + '</span></div>'; }
+
+  verificaDuplicidade();
+}
+
+async function salvaOF(ev) {
+  ev.preventDefault();
+  const of = ofDoForm();
+  if (!of.bobina) { alert('Informe o formato da bobina.'); return false; }
+  const v = validaVinco(of.vinco, of.larg);
+  if (!v.ok && v.soma != null && !confirm('A soma dos vincos não fecha com a largura. Registrar mesmo assim?')) return false;
+  if (!of.id && !idNovoPendente) {   // pedido novo (e não um reenvio): confere duplicidade antes de gastar a OP
+    const d = achaDuplicados();
+    if (d && d.fortes.length && !confirm('🚨 POSSÍVEL DUPLICIDADE\n\n' +
+        (d.oc ? 'Este cliente já tem a OC ' + d.oc + ' com a mesma medida, papel e vinco:' : 'Este cliente já tem um pedido com a mesma medida e quantidade:') +
+        '\n\n' + d.fortes.slice(0, 4).map(l => '• ' + descreveDup(l)).join('\n') +
+        '\n\nLançar mesmo assim?')) return false;
+  }
+  if (!of.id) {   // pedido novo: id fixo na tentativa, para o reenvio não duplicar
+    idNovoPendente = idNovoPendente || (Date.now() + '-' + Math.random().toString(36).slice(2, 7));
+    of.id = idNovoPendente; of.novo = true;
+  }
+  const btn = $('btnSalvar'), txtOrig = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Salvando no servidor...';
+  try {
+    await mutaServidor('/ofs/salvar', { of });   // o servidor dá a OP e a OF (FSC)
+  } catch (e) {
+    alert('Não foi possível salvar o pedido no servidor.\n\n' + e.message +
+      '\n\nO formulário foi mantido — tente salvar de novo.');
+    btn.disabled = false; btn.textContent = txtOrig;
+    return false;
+  }
+  btn.disabled = false; btn.textContent = txtOrig;
+  if (filaMode && filaIdx >= 0 && filaIdx < filaOCR.length) {
+    filaOCR[filaIdx].status = 'registrado';
+    salvaFilaOCR();
+    limpaForm();
+    avancaFila();
+  } else {
+    limpaForm();
+  }
+  return false;
+}
+
+function limpaForm() {
+  idNovoPendente = null;
+  $('formOF').reset();
+  $('fEditId').value = '';
+  $('fVinco').value = 'x';
+  $('btnSalvar').textContent = 'Registrar OP';
+  const hoje = new Date();
+  $('fData').value = hoje.toISOString().slice(0, 10);
+  aoMudarProduto();
+  atualizaOfCentralView();
+  sugereOP();
+  const av = $('avisoDuplicidade');
+  if (av) av.innerHTML = '';
+}
+
+/* Mostra no campo (não editável) a previsão da próxima OP — só exibição,
+   o número definitivo é dado pelo servidor ao salvar. */
+function sugereOP() {
+  $('fOF').value = proximaOpLocal();
+}
+
+function atualizaOfCentralView() {
+  const el = $('ofCentralView');
+  if (!el) return;
+  el.innerHTML = db.ofAtual
+    ? 'OF desta programação: <b>' + String(db.ofAtual).padStart(6, '0') + '</b>'
+    : 'OF desta programação: <b>será gerada ao registrar o 1º pedido</b>';
+}
+
+function editaOF(id) {
+  const o = db.ofs.find(x => x.id === id);
+  if (!o) return;
+  trocaAba('nova');
+  $('fEditId').value = o.id; $('fData').value = o.data; $('fCliente').value = o.cliente;
+  $('fOF').value = o.of; $('fOC').value = o.oc || ''; $('fProduto').value = o.produto + '|' + o.onda;
+  $('fQtde').value = o.qtde; $('fLarg').value = o.larg; $('fCompr').value = o.compr;
+  $('fVinco').value = o.vinco;
+  aoMudarProduto();
+  (o.papeis || []).forEach((c, i) => { if ($('fPapel' + i) && papel(c)) $('fPapel' + i).value = c; });
+  $('fArranjo').value = o.arranjo; $('fBobina').value = o.bobina;
+  $('fPalQtde').value = o.palQtde || ''; $('fPalMed').value = o.palMed || '';
+  $('btnSalvar').textContent = 'Salvar alterações';
+  recalcula();
+}
+
+async function cancelaOF(id) {
+  const o = db.ofs.find(x => x.id === id);
+  if (!o) return;
+  try { await mutaServidor('/ofs/cancelar', { id, cancelada: !o.cancelada }); }
+  catch (e) { alert('Não foi possível alterar o pedido: ' + e.message); }
+}
+async function excluiOF(id) {
+  if (!confirm('Excluir a OF definitivamente?')) return;
+  try { await mutaServidor('/ofs/excluir', { id }); }
+  catch (e) { alert('Não foi possível excluir o pedido: ' + e.message); }
+}
+
+/* ---------- programação ---------- */
+const ordemOnda = { D: 0, C: 1, B: 2 };
+/* dentro do dia: tipo de onda (D/BC → C → B) → bobina maior primeiro → cliente → nº da OF */
+function cmpProg(a, b) {
+  const oa = ordemOnda[a.onda] ?? 9, ob = ordemOnda[b.onda] ?? 9;
+  if (oa !== ob) return oa - ob;
+  if (b.bobina !== a.bobina) return b.bobina - a.bobina;
+  const cc = a.cliente.localeCompare(b.cliente);
+  if (cc !== 0) return cc;
+  return +a.of - +b.of;
+}
+function desenhaProg() {
+  const cont = $('listaProg');
+  $('velChip').textContent = db.params.velocidade + ' m/min';
+  if (!db.ofs.length) {
+    cont.innerHTML = '<div class="vazio">Nenhuma OF registrada.<br>Toque em <b>Nova OF</b> para começar.</div>';
+    return;
+  }
+  // atualiza rótulo do botão de ordenação
+  const btnS = $('btnSortProg');
+  if (btnS) btnS.textContent = sortProgView === 'of' ? 'Ordem: nº OF' : 'Ordem: prod.';
+
+  const dias = {};
+  db.ofs.forEach(o => { (dias[o.data] = dias[o.data] || []).push(o); });
+  let html = '';
+  let totKg = 0, totMin = 0, refs = [], totProdMin = 0, totSetupMin = 0;
+  const cmpView = sortProgView === 'of'
+    ? (a, b) => +a.of - +b.of
+    : cmpProg;
+  Object.keys(dias).sort().forEach(dia => {
+    const ofs = dias[dia].slice().sort(cmpView);
+    let dKg = 0, dMin = 0;
+    let cards = '';
+    ofs.forEach(o => {
+      const c = calcOF(o);
+      if (!o.cancelada && c.kg != null) { dKg += c.kg; dMin += c.min; refs.push(c.refile); }
+      const tagCol = c.coluna == null ? '' :
+        '<span class="tag ' + (c.colunaOK ? 'col-ok' : 'col-ruim') + '">coluna ' + fmt(c.coluna, 2) +
+        (c.colunaOK ? '' : ' &lt; ' + fmt(c.colMin, 1)) + '</span>';
+      cards += '<div class="of' + (o.cancelada ? ' cancelada' : '') + '">' +
+        '<div class="l1"><b>' + o.cliente + ' · ' + poCodigo(o) + '</b><span class="num">OF ' + o.of + '</span></div>' +
+        '<div class="l2">' + fmt0(o.qtde) + ' chapas · ' + o.larg + ' × ' + o.compr + ' mm · vinco ' + o.vinco +
+        ' · papéis ' + (o.papeis || []).join(' / ') + '</div>' +
+        '<div class="l3">' +
+        (o.cancelada ? '<span class="tag cancel">Cancelada</span>' : '') +
+        '<span class="tag">' + o.arranjo + '× em ' + o.bobina + '</span>' +
+        '<span class="tag">refile ' + (c.refile == null ? '—' : fmt(c.refile * 100, 1) + '%') + '</span>' +
+        '<span class="tag">' + (c.kg == null ? '—' : fmt(c.kg, 0) + ' kg') + '</span>' +
+        '<span class="tag">' + fmt(c.min, 0) + ' min</span>' + tagCol +
+        '</div>' +
+        '<div class="ops"><button onclick="editaOF(\'' + o.id + '\')">Editar</button>' +
+        '<button onclick="cancelaOF(\'' + o.id + '\')">' + (o.cancelada ? 'Reativar' : 'Cancelar') + '</button>' +
+        '<button data-copy="' + o.id + '" onclick="copiaLinhaOF(\'' + o.id + '\')">Copiar</button>' +
+        '<button class="del" onclick="excluiOF(\'' + o.id + '\')">Excluir</button></div></div>';
+    });
+    const simD = simulaDia(dias[dia]);
+    const tlD = simD && simD.linhas.find(l => l.tipo === 'total');
+    const dProd = tlD ? tlD.prodMin : dMin;
+    const dSetup = tlD ? tlD.paradaMin : 0;
+    totKg += dKg; totMin += dMin; totProdMin += dProd; totSetupMin += dSetup;
+    html += '<div class="dia"><h2>' + dataBR(dia) + '<small>' + fmt(dKg, 0) + ' kg' +
+      ' · prod. ' + fmt(dProd / 60, 1) + ' h · setup ' + fmt(dSetup, 0) + ' min · total ' + fmt((dProd + dSetup) / 60, 1) + ' h</small></h2>' + cards + '</div>';
+  });
+  const refMed = refs.length ? refs.reduce((a, b) => a + b, 0) / refs.length : null;
+  html += '<div class="totais">' +
+    '<div><b>' + fmt(totKg, 0) + '</b><span>kg no período</span></div>' +
+    '<div><b>' + fmt(totProdMin / 60, 1) + ' h</b><span>prod. pedidos</span></div>' +
+    '<div><b>' + fmt(totSetupMin, 0) + ' min</b><span>setup / trocas</span></div>' +
+    '<div><b>' + fmt((totProdMin + totSetupMin) / 60, 1) + ' h</b><span>tempo de máquina</span></div>' +
+    '<div><b>' + (refMed == null ? '—' : fmt(refMed * 100, 1) + '%') + '</b><span>refile médio</span></div>' +
+    '<div><b>' + db.ofs.filter(o => !o.cancelada).length + '</b><span>OFs ativas</span></div></div>';
+  cont.innerHTML = html;
+
+  // datalist de clientes
+  const dl = $('dlClientes');
+  dl.innerHTML = [...new Set(db.ofs.map(o => o.cliente))].map(c => '<option value="' + c + '">').join('');
+}
+
+function toggleSortProg() {
+  sortProgView = sortProgView === 'of' ? 'prod' : 'of';
+  desenhaProg();
+}
+
+/* ---------- SIMULAÇÃO / SEQUENCIAMENTO DIÁRIO ---------- */
+const TURNO_MIN = 480;        // 8 h × 60 min
+const PESO_BOBINA_KG = 1000;  // kg por bobina física
+
+function sortOFsDia(ofs) {
+  // 1. Tipo de onda (D=dupla/BC → C → B)  2. Bobina maior → menor  3. Cliente  4. Vinco (menos trocas)
+  const ondaOrd = { D: 0, C: 1, B: 2 };
+  return ofs.slice().sort((a, b) => {
+    const oa = ondaOrd[a.onda] ?? 9, ob = ondaOrd[b.onda] ?? 9;
+    if (oa !== ob) return oa - ob;
+    if (b.bobina !== a.bobina) return b.bobina - a.bobina;
+    const cc = a.cliente.localeCompare(b.cliente);
+    if (cc !== 0) return cc;
+    if (a.vinco !== b.vinco) return a.vinco.localeCompare(b.vinco);
+    return +a.of - +b.of;
+  });
+}
+
+function sortOFsDiaPorOC(ofs) {
+  // OFs com OC: ordem numérica crescente de OC  |  sem OC: data do pedido → nº OF
+  return ofs.slice().sort((a, b) => {
+    const aOC = (a.oc || '').trim();
+    const bOC = (b.oc || '').trim();
+    if (aOC && bOC) return aOC.localeCompare(bOC, 'pt-BR', { numeric: true });
+    if (aOC) return -1;
+    if (bOC) return 1;
+    return a.data.localeCompare(b.data) || +a.of - +b.of;
+  });
+}
+
+function sortOFsDiaPorMedida(ofs) {
+  // Para estoque curto de bobinas: 1. Tipo de papel (receita de papéis)  2. dentro do papel,
+  // medidas vizinhas juntas: largura da chapa → comprimento → nº OF
+  const chavePapel = o => (o.papeis || []).join('|');
+  return ofs.slice().sort((a, b) => {
+    const pc = chavePapel(a).localeCompare(chavePapel(b), 'pt-BR', { numeric: true });
+    if (pc !== 0) return pc;
+    return ((+b.larg || 0) - (+a.larg || 0)) || ((+b.compr || 0) - (+a.compr || 0)) || (+a.of - +b.of);
+  });
+}
+
+function mprOF(of) {
+  // metros-de-chapa que cada rolo físico aguenta por posição de papel
+  const p = produto(of.produto);
+  const miolos = p.tipo === 'D' ? MIOLOS_D : MIOLOS_S;
+  return (of.papeis || []).map((cod, i) => {
+    const pp = papel(cod);
+    if (!pp || !of.bobina) return Infinity;
+    const fator = miolos.includes(i) ? db.params.fatorMiolo : 1.0;
+    // metros de papel por rolo = 1000 kg × 1000 g/kg ÷ (g/m² × largura_m)
+    // metros de chapa = metros de papel ÷ fator
+    return (PESO_BOBINA_KG * 1000) / (pp.g * (of.bobina / 1000)) / fator;
+  });
+}
+
+function simularOF(mlOf, mpr, reelAtual, np) {
+  const VEL = db.params.velocidade;
+  let remaining = mlOf, prodMin = 0, paradaMin = 0;
+  const reelChanges = [];
+  const reel = reelAtual ? reelAtual.slice() : mpr.slice();
+
+  while (remaining > 1e-6) {
+    let minR = Infinity;
+    for (let i = 0; i < np; i++) if (reel[i] < minR) minR = reel[i];
+
+    if (minR >= remaining - 1e-6) {
+      prodMin += remaining / VEL;
+      for (let i = 0; i < np; i++) reel[i] -= remaining;
+      remaining = 0;
+    } else {
+      prodMin += minR / VEL;
+      remaining -= minR;
+      const ranOut = [];
+      for (let i = 0; i < np; i++) { reel[i] -= minR; if (reel[i] <= 1e-6) ranOut.push(i); }
+      const nChange = ranOut.length;
+      const tChange = nChange >= 3 ? 20 : nChange * 7;
+      paradaMin += tChange;
+      reelChanges.push({ n: nChange, t: tChange });
+      ranOut.forEach(i => { reel[i] = mpr[i]; });
+    }
+  }
+  return { prodMin, paradaMin, reelChanges, reelFinal: reel };
+}
+
+function simulaDia(ofsDodia, sortFn) {
+  const ativos = ofsDodia.filter(o => !o.cancelada);
+  if (!ativos.length) return null;
+
+  const sorted = (sortFn || sortOFsDia)(ativos);
+  const linhas = [];
+  let prevOF = null, reelAtual = null, currentBobina = null;
+  let acumMin = 0, acumKg = 0;
+  let secaoKg = 0, secaoProdMin = 0, secaoParadaMin = 0;
+  let totalProdMin = 0, totalParadaMin = 0;
+  let turnoCheio = false;
+  const ofsFora = [];
+
+  const npOf = of => produto(of.produto).tipo === 'D' ? 5 : 3;
+
+  for (const of of sorted) {
+    if (turnoCheio) { ofsFora.push(of); continue; }
+
+    const c = calcOF(of);
+    const mpr = mprOF(of);
+    const np = npOf(of);
+
+    // Calcular pausa de transição tentativa (antes de confirmar)
+    const isBobinaChange = of.bobina !== currentBobina;
+    let transMin = 0;
+    if (isBobinaChange && currentBobina !== null) transMin = 20;
+    else if (!isBobinaChange && prevOF) transMin = prevOF.vinco !== of.vinco ? 20 : 2;
+
+    const reelInicio = isBobinaChange ? mpr.slice() : reelAtual;
+    const sim = simularOF(c.ml, mpr, reelInicio, np);
+    const totalNeeded = transMin + sim.prodMin + sim.paradaMin;
+
+    if (acumMin + totalNeeded > TURNO_MIN + 0.1) {
+      ofsFora.push(of); turnoCheio = true; continue;
+    }
+
+    // ── Confirmar transição ──
+    if (isBobinaChange) {
+      if (currentBobina !== null) {
+        linhas.push({ tipo: 'section_total', bobina: currentBobina, kg: secaoKg, prodMin: secaoProdMin, paradaMin: secaoParadaMin });
+        acumMin += 20; totalParadaMin += 20;
+        linhas.push({ tipo: 'parada', desc: 'Troca de bobina: ' + currentBobina + ' → ' + of.bobina + ' mm (conjunto completo)', min: 20, acumMin, acumKg });
+      }
+      currentBobina = of.bobina;
+      secaoKg = 0; secaoProdMin = 0; secaoParadaMin = 0;
+      linhas.push({ tipo: 'section_header', bobina: of.bobina });
+    } else if (prevOF) {
+      acumMin += transMin; totalParadaMin += transMin; secaoParadaMin += transMin;
+      const descVinco = prevOF.vinco !== of.vinco
+        ? 'Troca de pedido + vinco (' + prevOF.vinco + ' → ' + of.vinco + ')'
+        : 'Troca de pedido (ajuste de facas)';
+      linhas.push({ tipo: 'parada', desc: descVinco, min: transMin, acumMin, acumKg });
+    }
+
+    // ── Confirmar OF ──
+    acumMin += sim.prodMin + sim.paradaMin;
+    const kgOf = c.kg || 0;
+    acumKg += kgOf; secaoKg += kgOf;
+    secaoProdMin += sim.prodMin; secaoParadaMin += sim.paradaMin;
+    totalProdMin += sim.prodMin; totalParadaMin += sim.paradaMin;
+    reelAtual = sim.reelFinal;
+    prevOF = of;
+
+    linhas.push({ tipo: 'of', of, c, prodMin: sim.prodMin, paradaMin: sim.paradaMin, reelChanges: sim.reelChanges, acumMin, acumKg });
+  }
+
+  if (currentBobina !== null)
+    linhas.push({ tipo: 'section_total', bobina: currentBobina, kg: secaoKg, prodMin: secaoProdMin, paradaMin: secaoParadaMin });
+
+  linhas.push({ tipo: 'total', prodMin: totalProdMin, paradaMin: totalParadaMin, acumMin, acumKg });
+
+  if (ofsFora.length) {
+    linhas.push({ tipo: 'fora_header' });
+    ofsFora.forEach(of => linhas.push({ tipo: 'fora', of, c: calcOF(of) }));
+  }
+  return { linhas, acumKg, acumMin, ofsFora };
+}
+
+/* ---------- exportação Excel (programação diária com simulação) ---------- */
+function exportaXLSX() {
+  _exportaXLSX({ sortFn: null });
+}
+
+function exportaXLSXporOC() {
+  _exportaXLSX({ sortFn: sortOFsDiaPorOC });
+}
+
+function exportaXLSXporMedida() {
+  _exportaXLSX({ sortFn: sortOFsDiaPorMedida });
+}
+
+function _exportaXLSX(opcoes) {
+  if (!db.ofs.length) { alert('Não há OFs para exportar.'); return; }
+
+  const clientesSet = new Set();
+  db.ofs.forEach(o => { if (!o.cancelada) clientesSet.add(o.cliente); });
+  const clientesStr = [...clientesSet].join(' - ') || 'Sem cliente';
+  const sheetSafe = s => s.replace(/[:\\\/\?\*\[\]]/g, '-').slice(0, 31);
+  const fileSafe  = s => s.replace(/[\\\/:*?"<>|]/g, '-');
+
+  const C = {
+    hbg:'0F1E2E', hfg:'FFFFFF', sbg:'1A3A5C', sfg:'FFFFFF', sbg2:'2E5C8C',
+    pbg:'FFF3CD', pfg:'7D5A00', ofbg:'FFFFFF', stbg:'DBE7F3',
+    totbg:'C8DFC8', totfg:'0D3D1C', forabg:'FBEAE6', forafg:'C23B22', lin:'CCD8E4'
+  };
+  const brd = { style:'thin', color:{ rgb: C.lin } };
+  const b4 = { top:brd, bottom:brd, left:brd, right:brd };
+
+  const wb = XLSX.utils.book_new();
+
+  // ── Tabela limpa (padrão Prime — mesmo formato ABAPEL.xlsx) ──
+  const HEAD2 = [
+    'Seq.Prod','Cliente','P.O.','Data Pedido',
+    'OP','OC','Qtde Pedido','largura','comprimento (facão)','',
+    'Sliter Vincadeira','','m²','ML','t/prod','Min prod','kg',
+    'Arranjo','Formato bobinas','Largura util','Ponta Refile','Refile',
+    'Capa Forradeira','MB','CIB','MC','CIC',
+    'Palete Qtde','Palete (medida LxC)'
+  ];
+  const NC2 = HEAD2.length;
+  const aoa2 = [], est2 = {}, merges2 = [];
+  function addRow2(cells, styleFn) {
+    while (cells.length < NC2) cells.push('');
+    const r2 = aoa2.length;
+    aoa2.push(cells);
+    for (let ci = 0; ci < NC2; ci++) {
+      const ref = XLSX.utils.encode_cell({ r: r2, c: ci });
+      est2[ref] = styleFn(ci);
+    }
+    return r2;
+  }
+  // Título (mesclado em toda a largura, como sempre foi — a OF única da
+  // programação vai junto no mesmo texto, sempre no formato "OF: 000123"
+  // para os outros apps conseguirem localizá-la por busca de texto)
+  const tituloOF = db.ofAtual ? ('  —  OF: ' + String(db.ofAtual).padStart(6, '0')) : '';
+  const rT2 = addRow2(['PROGRAMAÇÃO ONDULADEIRA - ' + clientesStr + tituloOF],
+    () => ({ font:{ bold:true, sz:13, color:{ rgb:C.hbg } } }));
+  merges2.push({ s:{ r:rT2, c:0 }, e:{ r:rT2, c:NC2-1 } });
+  // Cabeçalho
+  addRow2([...HEAD2], () => ({
+    font:{ bold:true, color:{ rgb:C.hfg }, sz:10 },
+    fill:{ fgColor:{ rgb:C.hbg } }, border:b4,
+    alignment:{ horizontal:'center', wrapText:true, vertical:'center' }
+  }));
+  // Dados — tudo é a mesma OF, então a data do pedido não entra na ordem:
+  // prioridade é tipo de papel (onda) → bobina → cliente → vinco.
+  let seq2 = 0;
+  let totQtde2 = 0, totKg2 = 0;
+  const ativos2 = db.ofs.filter(o => !o.cancelada);
+  (opcoes.sortFn || sortOFsDia)(ativos2).forEach(o => {
+    const cc2 = calcOF(o);
+    seq2++;
+    totQtde2 += o.qtde || 0;
+    totKg2   += cc2.kg || 0;
+    const largM   = +(o.larg / 1000).toFixed(3);
+    const comprM  = +(o.compr / 1000).toFixed(3);
+    const luM     = +((o.larg / 1000) * o.arranjo).toFixed(3);
+    const ponta   = o.bobina - o.larg * o.arranjo;           // mm
+    const refile  = o.bobina ? +(ponta / o.bobina).toFixed(4) : '';
+    const pps     = o.papeis || [];
+    addRow2([
+      seq2, o.cliente, poCodigo(o), dataBR(o.data),
+      +o.of, o.oc || '', o.qtde,
+      largM, comprM, '', o.vinco, '',
+      +cc2.m2.toFixed(3),
+      cc2.ml  != null ? +cc2.ml.toFixed(1)         : '',
+      cc2.min != null ? +(cc2.min/60).toFixed(4)   : '',
+      cc2.min != null ? +cc2.min.toFixed(2)         : '',
+      cc2.kg  != null ? +cc2.kg.toFixed(1)          : '',
+      o.arranjo, o.bobina,
+      luM, +ponta.toFixed(0), refile,
+      pps[0]||'', pps[1]||'', pps[2]||'', pps[3]||'', pps[4]||'',
+      o.palQtde || '', o.palMed || ''
+    ], ci => ({
+      font:{ bold: ci===1 },
+      fill:{ fgColor:{ rgb:'FFFFFF' } }, border:b4,
+      alignment:{ horizontal: ci>=12 ? 'right' : 'left' },
+      numFmt: (ci===7||ci===8||ci===19) ? '0.000' :
+              ci===12 ? '0.000' : ci===13 ? '0.0' :
+              ci===14 ? '0.0000' : ci===15 ? '0.00' :
+              ci===21 ? '0.0000' : undefined
+    }));
+  });
+  // Linha de totais
+  const rTot2 = addRow2(['','','','', '', '', totQtde2, '','','', '','', '','','','', +totKg2.toFixed(1)],
+    ci => ({ font:{ bold:true }, fill:{ fgColor:{ rgb:C.stbg } }, border:b4,
+             alignment:{ horizontal: ci>=12 ? 'right':'left' } }));
+
+  const ws2 = XLSX.utils.aoa_to_sheet(aoa2);
+  Object.entries(est2).forEach(([ref, s]) => { if (ws2[ref]) ws2[ref].s = s; });
+  // Colunas ocultas (dados continuam no arquivo, só não aparecem):
+  // Cliente, Data Pedido, m², ML, t/prod, Min prod, Ponta Refile e Refile.
+  // O restante fica visível (Seq.Prod, P.O., OP, OC, Qtde Pedido, largura,
+  // comprimento, 1 coluna em branco, Sliter Vincadeira, 1 coluna em branco, kg, Arranjo,
+  // Formato bobinas, Largura util, Capa Forradeira, MB, CIB, MC, CIC,
+  // Palete Qtde, Palete medida).
+  ws2['!cols'] = [
+    {wch:9},{wch:20,hidden:true},{wch:7},{wch:11,hidden:true},
+    {wch:8},{wch:7},{wch:10},{wch:9},{wch:13},{wch:11},
+    {wch:22},{wch:11},{wch:9,hidden:true},{wch:8,hidden:true},{wch:9,hidden:true},{wch:9,hidden:true},{wch:8},
+    {wch:8},{wch:13},{wch:11},{wch:11,hidden:true},{wch:8,hidden:true},
+    {wch:11},{wch:11},{wch:11},{wch:11},{wch:11},
+    {wch:10},{wch:16}
+  ];
+  ws2['!merges'] = merges2;
+  ws2['!rows'] = [{ hpt:18 }, { hpt:30 }];
+  // Nome do documento e da aba = cliente + número da OF (ex.: "ABAPEL 1417")
+  const nomeOF = clientesStr + (db.ofAtual ? ' ' + db.ofAtual : '');
+  XLSX.utils.book_append_sheet(wb, ws2, sheetSafe(nomeOF));
+
+  const nome = fileSafe(nomeOF) + '.xlsx';
+  const dados = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+  const blob = new Blob([dados], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const file = new File([blob], nome, { type: blob.type });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    navigator.share({ files: [file], title: nome }).catch(() => baixa(blob, nome));
+  } else baixa(blob, nome);
+}
+/* Excel para os operadores: P&B, agrupado por cliente, uma aba por dia, paisagem A4 */
+function xlsxOperadores() {
+  const ativos = db.ofs.filter(o => !o.cancelada);
+  if (!ativos.length) { alert('Não há OFs ativas para gerar o Excel.'); return; }
+
+  const wb = XLSX.utils.book_new();
+  const dias = {};
+  ativos.forEach(o => { (dias[o.data] = dias[o.data] || []).push(o); });
+
+  const brdT = { style:'thin',   color:{ rgb:'000000' } };
+  const brdM = { style:'medium', color:{ rgb:'000000' } };
+  const b4   = { top:brdT, bottom:brdT, left:brdT, right:brdT };
+  const b4m  = { top:brdM, bottom:brdM, left:brdM, right:brdM };
+  const NCOLS = 9;
+  const HEAD = ['#', 'OP', 'Produto', 'Chapas', 'Medidas', 'V', 'Bobina / Papéis', 'Arr.', 'Paletes'];
+
+  Object.keys(dias).sort().forEach(dia => {
+    const ofsDay = dias[dia].slice();
+    if (!ofsDay.length) return;
+
+    ofsDay.sort((a, b) => {
+      const cc = a.cliente.localeCompare(b.cliente);
+      if (cc !== 0) return cc;
+      const oa = ordemOnda[a.onda] ?? 9, ob = ordemOnda[b.onda] ?? 9;
+      if (oa !== ob) return oa - ob;
+      return (b.bobina - a.bobina) || (+a.of - +b.of);
+    });
+
+    const aoa = [], estilos = {}, merges = [], rowH = [];
+    let seq = 0;
+
+    function addRow(cells, styleFn, hpt) {
+      while (cells.length < NCOLS) cells.push('');
+      const r = aoa.length;
+      aoa.push(cells);
+      rowH.push(hpt ? { hpt } : null);
+      for (let ci = 0; ci < NCOLS; ci++) {
+        const ref = XLSX.utils.encode_cell({ r, c: ci });
+        estilos[ref] = styleFn(ci);
+      }
+      return r;
+    }
+
+    // Título do dia — fundo preto, texto branco
+    const rDay = addRow(['ONDULADEIRA — PROGRAMAÇÃO DE ' + dataBR(dia)],
+      () => ({ font:{ bold:true, sz:16, color:{ rgb:'FFFFFF' } },
+               fill:{ fgColor:{ rgb:'000000' } },
+               alignment:{ horizontal:'center', vertical:'center' } }), 28);
+    merges.push({ s:{ r:rDay, c:0 }, e:{ r:rDay, c:NCOLS-1 } });
+
+    // Cabeçalho de colunas — branco com borda grossa preta
+    addRow([...HEAD], ci => ({
+      font:{ bold:true, sz:12, color:{ rgb:'000000' } },
+      fill:{ fgColor:{ rgb:'FFFFFF' } }, border:b4m,
+      alignment:{ horizontal:'center', wrapText:true, vertical:'center' }
+    }), 22);
+
+    const cliOrder = [], cliMap = {};
+    ofsDay.forEach(o => {
+      if (!cliMap[o.cliente]) { cliOrder.push(o.cliente); cliMap[o.cliente] = []; }
+      cliMap[o.cliente].push(o);
+    });
+
+    cliOrder.forEach(cli => {
+      // Cabeçalho do cliente — cinza claro
+      const rCli = addRow(['Programação — ' + cli],
+        () => ({ font:{ bold:true, sz:13, color:{ rgb:'000000' } },
+                 fill:{ fgColor:{ rgb:'CCCCCC' } }, border:b4,
+                 alignment:{ horizontal:'left', vertical:'center' } }), 20);
+      merges.push({ s:{ r:rCli, c:0 }, e:{ r:rCli, c:NCOLS-1 } });
+
+      cliMap[cli].forEach(o => {
+        seq++;
+        const medidas = o.larg + ' × ' + o.compr + ' mm';
+        const vinco   = o.vinco || 'x';
+        const bobPap  = o.bobina + ' mm\n' + (o.papeis || []).join(' / ');
+        const palStr  = (o.palQtde ? o.palQtde + ' paletes' : '—') +
+                        (o.palMed ? '\n' + o.palMed : '');
+        addRow([
+          seq, +o.of, poCodigo(o), o.qtde,
+          medidas, vinco, bobPap,
+          o.arranjo + '×',
+          palStr
+        ], ci => ({
+          font:{ sz:13, bold: ci === 3 },
+          fill:{ fgColor:{ rgb:'FFFFFF' } }, border:b4,
+          alignment:{
+            horizontal:(ci===0||ci===1||ci===3||ci===5||ci===7)?'center':'left',
+            vertical:'top',
+            wrapText: ci===6||ci===8
+          }
+        }), 36);
+      });
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    Object.entries(estilos).forEach(([ref, s]) => { if (ws[ref]) ws[ref].s = s; });
+    ws['!cols'] = [
+      {wch:4},{wch:7},{wch:9},{wch:8},
+      {wch:15},{wch:14},{wch:28},{wch:6},{wch:20}
+    ];
+    ws['!merges'] = merges;
+    ws['!rows'] = rowH;
+    ws['!pageSetup'] = { paperSize:9, orientation:'landscape',
+                         fitToPage:true, fitToWidth:1, fitToHeight:1 };
+    ws['!margins'] = { left:0.4, right:0.4, top:0.6, bottom:0.6, header:0.2, footer:0.2 };
+
+    XLSX.utils.book_append_sheet(wb, ws, dataBR(dia).replace(/\//g, '-'));
+  });
+
+  const nome = 'Operadores_' + new Date().toISOString().slice(0, 10) + '.xlsx';
+  const dados = XLSX.write(wb, { bookType:'xlsx', type:'array' });
+  const blob = new Blob([dados], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const file = new File([blob], nome, { type: blob.type });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    navigator.share({ files: [file], title: nome }).catch(() => baixa(blob, nome));
+  } else baixa(blob, nome);
+}
+
+function baixa(blob, nome) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = nome; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+
+/* ---------- copiar linha da OF para colar no Excel ---------- */
+// A linha copiada segue EXATAMENTE as colunas e formatos do "Excel por Bobina"
+// (_exportaXLSX / tabela limpa): mesmas colunas, na mesma ordem (inclusive as 2
+// colunas em branco), números com vírgula e as mesmas casas decimais
+// (0,693 / 1,780 / 0,9370 ...). Vai para a área de transferência em duas formas:
+//  - text/html: o Excel respeita o mso-number-format e mostra os zeros finais;
+//  - text/plain (TSV): fallback para colar em qualquer outro lugar.
+function copiaLinhaOF(id) {
+  const o = db.ofs.find(x => x.id === id);
+  if (!o) return;
+  const cc = calcOF(o);
+  const ponta = o.bobina - o.larg * o.arranjo;
+  const pps = o.papeis || [];
+  // n(valor, casas): número com `casas` decimais fixas -> {t: texto pt-BR, f: formato Excel}
+  // n(valor, null): número "Geral" (sem zeros à direita, como no Excel)
+  const n = (v, casas) => {
+    if (v == null || v === '' || isNaN(v)) return { t: '', f: null };
+    if (casas == null) return { t: String(+v).replace('.', ','), f: null, num: true };
+    return { t: (+v).toFixed(casas).replace('.', ','), f: casas ? '0.' + '0'.repeat(casas) : '0', num: true };
+  };
+  const tx = v => ({ t: v == null ? '' : String(v), f: '@' });   // texto (como no xlsx)
+  const vz = { t: '', f: null };
+  // Mesma ordem de HEAD2 do _exportaXLSX:
+  // Seq.Prod | Cliente | P.O. | Data Pedido | OP | OC | Qtde Pedido | largura |
+  // comprimento | (branco) | Sliter Vincadeira | (branco) | m² | ML | t/prod |
+  // Min prod | kg | Arranjo | Formato bobinas | Largura util | Ponta Refile |
+  // Refile | Capa Forradeira | MB | CIB | MC | CIC | Palete Qtde | Palete (LxC)
+  const cols = [
+    vz,
+    tx(o.cliente),
+    tx(poCodigo(o)),
+    tx(dataBR(o.data)),
+    n(+o.of, null),
+    tx(o.oc || ''),
+    n(o.qtde, null),
+    n(o.larg / 1000, 3),
+    n(o.compr / 1000, 3),
+    vz,
+    tx(o.vinco),
+    vz,
+    cc.m2  != null ? n(cc.m2, 3)    : vz,
+    cc.ml  != null ? n(cc.ml, 1)    : vz,
+    cc.min != null ? n(cc.min / 60, 4) : vz,
+    cc.min != null ? n(cc.min, 2)   : vz,
+    cc.kg  != null ? n(+cc.kg.toFixed(1), null) : vz,
+    n(o.arranjo, null),
+    n(o.bobina, null),
+    n((o.larg / 1000) * o.arranjo, 3),
+    n(+ponta.toFixed(0), null),
+    o.bobina ? n(ponta / o.bobina, 4) : vz,
+    tx(pps[0] || ''), tx(pps[1] || ''), tx(pps[2] || ''), tx(pps[3] || ''), tx(pps[4] || ''),
+    tx(o.palQtde || ''),
+    tx(o.palMed || '')
+  ];
+  const tsv = cols.map(c => c.t).join('\t');
+  const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const html = '<table><tr>' + cols.map(c => {
+    const fmt = c.f ? ' style="mso-number-format:\'' + (c.f === '@' ? '\\@' : c.f.replace('.', '\\.')) + '\'"' : '';
+    return '<td' + fmt + '>' + esc(c.t) + '</td>';
+  }).join('') + '</tr></table>';
+
+  const btn = document.querySelector('[data-copy="' + id + '"]');
+  const ok  = () => { if (btn) { const t = btn.textContent; btn.textContent = 'Copiado!'; setTimeout(() => btn.textContent = t, 1800); } };
+  if (navigator.clipboard && navigator.clipboard.write && window.ClipboardItem) {
+    navigator.clipboard.write([new ClipboardItem({
+      'text/html':  new Blob([html], { type: 'text/html' }),
+      'text/plain': new Blob([tsv],  { type: 'text/plain' })
+    })]).then(ok).catch(() => copiaFallback(tsv, ok, html));
+  } else copiaFallback(tsv, ok, html);
+}
+function copiaFallback(texto, cb, html) {
+  const ta = document.createElement('textarea');
+  ta.value = texto; ta.style.cssText = 'position:fixed;opacity:0';
+  document.body.appendChild(ta); ta.select();
+  const onCopy = e => {
+    if (!html) return;
+    e.clipboardData.setData('text/plain', texto);
+    e.clipboardData.setData('text/html', html);
+    e.preventDefault();
+  };
+  document.addEventListener('copy', onCopy);
+  try { document.execCommand('copy'); cb(); } catch(e) { alert('Não foi possível copiar automaticamente.'); }
+  document.removeEventListener('copy', onCopy);
+  document.body.removeChild(ta);
+}
+
+/* ---------- tabelas e parâmetros ---------- */
+function desenhaTabelas() {
+  $('pVel').value = db.params.velocidade;
+  $('pFator').value = db.params.fatorMiolo;
+  $('pColaS').value = db.params.colaSimples;
+  $('pColaD').value = db.params.colaDupla;
+  $('pFormatos').value = db.params.formatos.join(', ');
+  const L = db.params.limites || {};
+  $('pLargMin').value = L.largMin || ''; $('pLargMax').value = L.largMax || '';
+  $('pComprMin').value = L.comprMin || ''; $('pComprMax').value = L.comprMax || '';
+  const PA = db.params.palete || {};
+  $('pPilhaAlt').value = PA.altura || ''; $('pMultB').value = PA.multB || '';
+  $('pMultC').value = PA.multC || ''; $('pMultD').value = PA.multD || '';
+  $('pSobra').value = PA.sobra || ''; $('pFolga').value = PA.folga || 40;
+  $('pPadroes').value = (PA.padroes || []).join(', ');
+
+  const tb = $('tbPapeis').querySelector('tbody');
+  tb.innerHTML = '';
+  db.papeis.forEach((p, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = '<td><b>' + p.cod + '</b>' + (p.est ? ' <span class="est">est.</span>' : '') + '</td>' +
+      '<td><input type="number" value="' + p.g + '" onchange="mudaPapel(' + i + ',\'g\',this.value)"></td>' +
+      '<td><input type="number" step="0.5" value="' + p.rct + '" onchange="mudaPapel(' + i + ',\'rct\',this.value)"></td>' +
+      '<td><button class="btn mini perigo" onclick="delPapel(' + i + ')">×</button></td>';
+    tb.appendChild(tr);
+  });
+
+  const lp = $('listaProdutos');
+  lp.innerHTML = '';
+  db.produtos.forEach((p, pi) => {
+    const nomes = p.tipo === 'D' ? CAMADAS_D : CAMADAS_S;
+    let sels = '';
+    nomes.forEach((n, i) => {
+      sels += '<label>' + n + '</label><select onchange="mudaReceita(' + pi + ',' + i + ',this.value)">' +
+        db.papeis.map(pp => '<option value="' + pp.cod + '"' + (p.rec[i] === pp.cod ? ' selected' : '') + '>' +
+          pp.cod + ' (' + pp.g + 'g · ' + pp.rct + ')</option>').join('') + '</select>';
+    });
+    const div = document.createElement('div');
+    div.className = 'card';
+    div.innerHTML = '<h3 style="font-size:17px">' + p.cod + (p.tipo === 'D' ? ' — parede dupla' : '') + '</h3>' +
+      '<div class="row"><div><label>Coluna mín. (kgf/cm)</label>' +
+      '<input type="number" step="0.1" value="' + p.colMin + '" onchange="mudaProduto(' + pi + ',\'colMin\',this.value)"></div>' +
+      '<div><label>Gram. nominal B</label><input type="number" value="' + p.gramB + '" onchange="mudaProduto(' + pi + ',\'gramB\',this.value)"></div>' +
+      '<div><label>Gram. nominal C</label><input type="number" value="' + p.gramC + '" onchange="mudaProduto(' + pi + ',\'gramC\',this.value)"></div></div>' +
+      sels + '<div class="nota" id="prev' + pi + '"></div>';
+    lp.appendChild(div);
+    previewProduto(pi);
+  });
+}
+function previewProduto(pi) {
+  const p = db.produtos[pi];
+  const miolos = p.tipo === 'D' ? MIOLOS_D : MIOLOS_S;
+  const cola = p.tipo === 'D' ? db.params.colaDupla : db.params.colaSimples;
+  let g = cola, col = 0;
+  p.rec.forEach((c, i) => {
+    const pp = papel(c); if (!pp) return;
+    const f = miolos.includes(i) ? db.params.fatorMiolo : 1;
+    g += pp.g * f; col += pp.rct * f;
+  });
+  const el = $('prev' + pi);
+  if (el) el.innerHTML = 'Receita atual: coluna teórica <b>' + fmt(col / 10, 2) + '</b> kgf/cm (mín. ' +
+    fmt(p.colMin, 1) + ') · gramatura <b>' + fmt0(g) + '</b> g/m²' +
+    (col / 10 < p.colMin ? ' — <span class="est">abaixo do mínimo</span>' : '');
+}
+function mudaPapel(i, campo, v) { db.papeis[i][campo] = +v; if (campo === 'rct') delete db.papeis[i].est; salvaConfig(); desenhaTabelas(); }
+function delPapel(i) {
+  const cod = db.papeis[i].cod;
+  if (db.produtos.some(p => p.rec.includes(cod))) { alert('Este papel está em uso numa receita.'); return; }
+  if (confirm('Remover ' + cod + '?')) { db.papeis.splice(i, 1); salvaConfig(); desenhaTabelas(); }
+}
+function addPapel() {
+  const cod = prompt('Código do papel (ex.: TLQ150):');
+  if (!cod) return;
+  const g = +prompt('Gramatura (g/m²):') || 0;
+  const rct = +prompt('RCT (kgf):') || 0;
+  db.papeis.push({ cod: cod.trim(), g, rct });
+  salvaConfig(); desenhaTabelas();
+}
+function mudaReceita(pi, i, v) { db.produtos[pi].rec[i] = v; salvaConfig(); previewProduto(pi); }
+function mudaProduto(pi, campo, v) { db.produtos[pi][campo] = +v; salvaConfig(); previewProduto(pi); }
+function salvaParams() {
+  db.params.velocidade = +$('pVel').value || 60;
+  db.params.fatorMiolo = +$('pFator').value || 1.3;
+  db.params.colaSimples = +$('pColaS').value || 15;
+  db.params.colaDupla = +$('pColaD').value || 20;
+  db.params.formatos = $('pFormatos').value.split(/[,;\s]+/).map(Number).filter(n => n > 0).sort((a, b) => a - b);
+  db.params.limites = {
+    largMin: +$('pLargMin').value || 0, largMax: +$('pLargMax').value || 0,
+    comprMin: +$('pComprMin').value || 0, comprMax: +$('pComprMax').value || 0
+  };
+  db.params.palete = {
+    altura: +$('pPilhaAlt').value || 1220,
+    multB: +$('pMultB').value || 33, multC: +$('pMultC').value || 26, multD: +$('pMultD').value || 16,
+    sobra: +$('pSobra').value || 200, folga: +$('pFolga').value || 40,
+    padroes: $('pPadroes').value.split(/[,;\s]+/).map(Number).filter(n => n > 0).sort((a, b) => a - b)
+  };
+  salvaConfig();
+  $('velChip').textContent = db.params.velocidade + ' m/min';
+  alert('Parâmetros salvos. Os cálculos de todas as OFs já usam os novos valores.');
+}
+
+/* ---------- backup ---------- */
+function exportaJSON() {
+  baixa(new Blob([JSON.stringify(db, null, 1)], { type: 'application/json' }),
+    'backup_onduladeira_' + new Date().toISOString().slice(0, 10) + '.json');
+}
+function importaJSON(inp) {
+  const f = inp.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const d = JSON.parse(r.result);
+      if (!d.params || !d.papeis) throw 0;
+      mutaServidor('/importar', { db: d })
+        .then(() => { desenhaTabelas(); alert('Backup restaurado no servidor (os contadores de OF/OP nunca voltam atrás).'); })
+        .catch(e => alert('Não foi possível restaurar: ' + e.message));
+    } catch (e) { alert('Arquivo inválido.'); }
+  };
+  r.readAsText(f);
+  inp.value = '';
+}
+async function limpaOFs() {
+  if (!db.ofs.length) { alert('A programação já está vazia.'); return; }
+  if (confirm('Apagar todas as ' + db.ofs.length + ' OFs da programação em TODOS os aparelhos?\n(Papéis, produtos e parâmetros são mantidos; a numeração de OF/OP continua de onde parou.)')) {
+    try { await mutaServidor('/ofs/limpar', {}); }
+    catch (e) { alert('Não foi possível limpar a programação: ' + e.message); }
+  }
+}
+async function zeraTudo() {
+  if (confirm('Apagar TODAS as OFs e restaurar as tabelas padrão (em todos os aparelhos)?') && confirm('Tem certeza? Não dá para desfazer.')) {
+    try { await mutaServidor('/importar', { db: JSON.parse(JSON.stringify(SEED)) }); desenhaTabelas(); }
+    catch (e) { alert('Não foi possível restaurar o padrão: ' + e.message); }
+  }
+}
+
+/* ===== FILA DE IMPORTAÇÃO OCR =====
+   Carrega arquivos (imagens/texto/JSON do OCR) um a um para conferência antes do lançamento.
+   Status por arquivo: 'pendente' → 'registrado' | 'pulado'
+   Persistência: localStorage guarda nome+status; arquivos precisam ser recarregados se o app fechar. */
+
+const FILA_KEY2 = 'prime_fila_v2';
+let filaOCR = [];   // [{file, nome, status, url, texto, isImg}]
+let filaIdx  = -1;
+let filaMode = false;
+
+function salvaFilaOCR() {
+  try {
+    localStorage.setItem(FILA_KEY2, JSON.stringify(
+      filaOCR.map(f => ({ nome: f.nome, status: f.status }))
+    ));
+  } catch(e) {}
+}
+
+function abreInputFilaOCR() {
+  $('inputFilaOCR').value = '';
+  $('inputFilaOCR').click();
+}
+
+/* ===== COLAR OCR =====
+   Atalho para o fluxo do arquivo .txt: em vez de salvar o JSON do OCR num bloco de
+   notas e depois subir o arquivo, o texto é colado direto aqui e vira um "arquivo"
+   em memória, que segue exatamente pelo mesmo caminho de carregaFilaOCR(). */
+function abreColarOCR() {
+  $('colarOCRErro').style.display = 'none';
+  $('colarOCRTexto').value = '';
+  $('colarOCRModal').style.display = 'flex';
+  $('colarOCRTexto').focus();
+  colaDaAreaTransferencia();   // tenta preencher sozinho; se o navegador negar, cola na mão
+}
+
+function fechaColarOCR() { $('colarOCRModal').style.display = 'none'; }
+
+async function colaDaAreaTransferencia() {
+  try {
+    const t = await navigator.clipboard.readText();
+    if (t && t.trim()) $('colarOCRTexto').value = t;
+  } catch (e) { /* sem permissão de clipboard — o usuário cola com Ctrl+V */ }
+}
+
+/* Nome estável derivado das OCs do conteúdo, para que colar duas vezes o mesmo
+   pedido não duplique os itens na fila. */
+function nomeArquivoColado(parsed) {
+  const ocs = [];
+  if (Array.isArray(parsed)) {
+    for (const o of parsed) {
+      const oc = String((o && o.OC) || '').trim();
+      if (oc && !ocs.includes(oc)) ocs.push(oc);
+    }
+  }
+  return ocs.length ? `Colado ${ocs.join('-')}.json` : `Colado ${Date.now()}.json`;
+}
+
+async function confirmaColarOCR() {
+  const err = $('colarOCRErro');
+  const bruto = ($('colarOCRTexto').value || '').trim();
+  if (!bruto) { err.textContent = 'Cole o texto do OCR primeiro.'; err.style.display = ''; return; }
+
+  const limpo  = bruto.replace(/^```[a-z]*\s*/i, '').replace(/```\s*$/, '').trim();
+  const parsed = parseJSONTolerante(limpo);
+  if (!parsed) {
+    err.textContent = 'Não consegui ler um JSON válido nesse texto. Confira se copiou o conteúdo todo.';
+    err.style.display = '';
+    return;
+  }
+
+  const nome = nomeArquivoColado(parsed);
+  if (filaOCR.some(x => x.nome === nome || x.origemArquivo === nome)) {
+    err.textContent = 'Esse pedido já está na fila.';
+    err.style.display = '';
+    return;
+  }
+
+  const arquivo = new File([limpo], nome, { type: 'application/json' });
+  fechaColarOCR();
+  await carregaFilaOCR([arquivo]);
+}
+
+function adicionarFila() {
+  $('inputFilaOCR').value = '';
+  $('inputFilaOCR').click();
+}
+
+/* Interpreta "Tipo de Papel" do OCR → {produto, onda} compatível com o cadastro.
+   Exemplos: "P60-C"→P60|C · "P25B"→P25|B · "PW40B"→PW40|B · "P55-D onda BC"→P55D|D
+   "PO60-C"/"PO50-B" são leituras OCR de "P60-C"/"P50-B" (O confundido com 0).
+   Aceita com ou sem separador entre número e onda (P25B e P25-B são equivalentes). */
+function parseTipoPapel(tipo) {
+  if (!tipo) return null;
+  const t = tipo.trim();
+  // Dupla: "P55-D onda BC", "P70D onda BC"
+  if (/onda\s*BC/i.test(t)) {
+    const m = t.match(/P([A-Za-z]*)(\d+)/i);
+    if (m) {
+      let pref = m[1].toUpperCase();
+      if (pref === 'O') pref = '';         // "PO" é ruído OCR
+      return { produto: 'P' + pref + m[2] + 'D', onda: 'D' };
+    }
+  }
+  // Simples: P + prefixo opcional (W, K, …) + dígitos + separador opcional + B ou C
+  // Cobre: "P25B", "P60-C", "PW40B", "PW40-B", "PK50B", "PO60-C"
+  const m = t.match(/P([A-Za-z]*)(\d+)[^0-9A-Za-z]*([BC])/i);
+  if (m) {
+    let pref = m[1].toUpperCase();
+    if (pref === 'O') pref = '';           // "PO" é ruído OCR
+    return { produto: 'P' + pref + m[2], onda: m[3].toUpperCase() };
+  }
+  return null;
+}
+
+/* Tenta fazer JSON.parse tolerando lixo (texto solto) antes/depois do JSON válido.
+   Ex.: "[...]S" ou "Aqui está: [...]" — corta tudo fora do primeiro '['/'{' … último ']'/'}'. */
+function parseJSONTolerante(texto) {
+  try { return JSON.parse(texto); } catch(e) {}
+  const iniArr = texto.indexOf('['), iniObj = texto.indexOf('{');
+  const inicios = [iniArr, iniObj].filter(i => i >= 0);
+  if (!inicios.length) return null;
+  const ini = Math.min(...inicios);
+  const fimArr = texto.lastIndexOf(']'), fimObj = texto.lastIndexOf('}');
+  const fim = Math.max(fimArr, fimObj);
+  if (fim <= ini) return null;
+  try { return JSON.parse(texto.slice(ini, fim + 1)); } catch(e) { return null; }
+}
+
+/* Converte quantidade em formato BR ("5.500" → 5500). */
+function parseQtdeBR(s) {
+  return parseInt(String(s || '').replace(/\./g, '').replace(/,/g, ''), 10) || 0;
+}
+
+/* Normaliza vinco do OCR: "Sem vinco" / "sem vinco" → "x"; demais passam direto. */
+function parseVinco(s) {
+  if (!s) return 'x';
+  return /sem\s*vinco/i.test(s.trim()) ? 'x' : s.trim();
+}
+
+/* Converte a data do pedido lida do OCR ("23/07/2026", "23-07-26", já em ISO
+   "2026-07-23" etc.) para o formato ISO (aaaa-mm-dd) do <input type=date>.
+   Retorna '' se não reconhecer — nesse caso o campo fica com o valor padrão
+   (hoje) e o operador corrige na mão. */
+function parseDataBR(s) {
+  const t = String(s || '').trim();
+  if (!t) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return t; // já em ISO
+  const m = t.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+  if (!m) return '';
+  let [, d, mo, a] = m;
+  if (a.length === 2) a = (+a < 70 ? '20' : '19') + a;
+  return a + '-' + mo.padStart(2, '0') + '-' + d.padStart(2, '0');
+}
+
+/* Data do pedido pode vir no nível da OC (o normal — a mesma data vale pra
+   todos os itens) ou, mais raramente, dentro de cada item. Aceita algumas
+   variações de chave que o OCR pode usar. */
+function achaDataPedido(oc, item) {
+  const bruto = (oc && (oc.Data || oc['Data do Pedido'] || oc['Data Pedido'] || oc.DataPedido)) ||
+    (item && (item.Data || item['Data do Pedido'] || item['Data Pedido'] || item.DataPedido)) || '';
+  return parseDataBR(bruto);
+}
+
+async function carregaFilaOCR(fileList) {
+  const metaSalva = (() => {
+    try { return JSON.parse(localStorage.getItem(FILA_KEY2)) || []; } catch(e) { return []; }
+  })();
+
+  let novos = 0;
+  for (const file of Array.from(fileList)) {
+    // Evita duplicatas por nome de arquivo OU por arquivo-origem de expansões anteriores
+    if (filaOCR.some(x => x.nome === file.name || x.origemArquivo === file.name)) continue;
+
+    const isImg = file.type.startsWith('image/');
+
+    if (!isImg) {
+      // Lê o texto imediatamente para detectar o formato multi-OC
+      const texto = await new Promise(resolve => {
+        const r = new FileReader();
+        r.onload = e => resolve(e.target.result || '');
+        r.onerror = () => resolve('');
+        r.readAsText(file, 'utf-8');
+      });
+
+      // Remove delimitadores de bloco Markdown (```json … ```) se presentes
+      const limpo = texto.replace(/^```[a-z]*\s*/i, '').replace(/```\s*$/, '').trim();
+      const parsed = parseJSONTolerante(limpo);
+
+      // Formato multi-OC: array de objetos com "Itens" (ou "itens").
+      // A OC pode vir vazia; nesse caso usa o nome do arquivo como OC.
+      if (Array.isArray(parsed) && parsed.length && parsed[0] &&
+          Array.isArray(parsed[0].Itens || parsed[0].itens)) {
+        const ocFallback = file.name.replace(/\.[^.]+$/, '').trim();
+        for (const oc of parsed) {
+          const ocNome    = String(oc.OC       || '').trim() || ocFallback;
+          const ocCliente = String(oc.Cliente  || '').trim();
+          const ocItens   = oc.Itens || oc.itens || [];
+          for (let j = 0; j < ocItens.length; j++) {
+            const item = ocItens[j];
+            const tipoPapel = parseTipoPapel(item['Tipo de Papel']);
+            const entryNome = `${ocNome} — ${item.Largura}×${item.Comprimento}mm`;
+            const meta = metaSalva.find(x => x.nome === entryNome);
+            const dados = {
+              cliente: ocCliente,
+              oc: ocNome,
+              data: achaDataPedido(oc, item),
+              qtde: parseQtdeBR(item.Quantidade),
+              larg: parseQtdeBR(item.Largura) || '',
+              compr: parseQtdeBR(item.Comprimento) || '',
+              vinco: parseVinco(item.Vincos || item.vincos),
+              tipoPapelOriginal: item['Tipo de Papel'] || '',
+              ...(tipoPapel || {})
+            };
+            filaOCR.push({
+              file: null, nome: entryNome,
+              status: meta ? meta.status : 'pendente',
+              url: null, texto: null, isImg: false,
+              origemArquivo: file.name, dados
+            });
+            novos++;
+          }
+        }
+        continue; // arquivo JSON multi-OC expandido — não adiciona como entrada única
+      }
+
+      // Formato flat: array de itens sem agrupamento em "Itens" — cada objeto já é um item
+      // Ex: [{Cliente, OC, Quantidade, Largura, Comprimento, Vincos, "Tipo de Papel"}, …]
+      // A OC pode vir vazia; nesse caso usa o nome do arquivo como OC.
+      if (Array.isArray(parsed) && parsed.length && parsed[0] && parsed[0].Quantidade) {
+        const ocFallback = file.name.replace(/\.[^.]+$/, '').trim();
+        for (let j = 0; j < parsed.length; j++) {
+          const item = parsed[j];
+          const ocNome    = String(item.OC      || '').trim() || ocFallback;
+          const ocCliente = String(item.Cliente || '').trim();
+          const tipoPapel = parseTipoPapel(item['Tipo de Papel']);
+          const entryNome = `${ocNome} — ${item.Largura}×${item.Comprimento}mm`;
+          const meta = metaSalva.find(x => x.nome === entryNome);
+          const dados = {
+            cliente: ocCliente,
+            oc: ocNome,
+            data: achaDataPedido(item, item),
+            qtde: parseQtdeBR(item.Quantidade),
+            larg: parseQtdeBR(item.Largura) || '',
+            compr: parseQtdeBR(item.Comprimento) || '',
+            vinco: parseVinco(item.Vincos || item.vincos),
+            tipoPapelOriginal: item['Tipo de Papel'] || '',
+            ...(tipoPapel || {})
+          };
+          filaOCR.push({
+            file: null, nome: entryNome,
+            status: meta ? meta.status : 'pendente',
+            url: null, texto: null, isImg: false,
+            origemArquivo: file.name, dados
+          });
+          novos++;
+        }
+        continue; // arquivo JSON flat expandido — não adiciona como entrada única
+      }
+
+      // Arquivo de texto simples: adiciona com texto já carregado
+      const meta = metaSalva.find(x => x.nome === file.name);
+      filaOCR.push({
+        file, nome: file.name,
+        status: meta ? meta.status : 'pendente',
+        url: null, texto, isImg: false
+      });
+      novos++;
+    } else {
+      // Imagem
+      const meta = metaSalva.find(x => x.nome === file.name);
+      filaOCR.push({
+        file, nome: file.name,
+        status: meta ? meta.status : 'pendente',
+        url: null, texto: null, isImg: true
+      });
+      novos++;
+    }
+  }
+
+  if (!novos && filaOCR.length === 0) return;
+
+  filaMode = true;
+  $('filaOCRPanel').style.display = '';
+  salvaFilaOCR();
+
+  // Vai direto ao primeiro pendente
+  const primP = filaOCR.findIndex(x => x.status === 'pendente');
+  await mostraItemFila(primP >= 0 ? primP : 0);
+  trocaAba('nova');
+}
+
+async function mostraItemFila(idx) {
+  if (idx < 0 || idx >= filaOCR.length) return;
+  filaIdx = idx;
+  const item = filaOCR[idx];
+
+  // — Contadores de progresso —
+  const total = filaOCR.length;
+  const reg   = filaOCR.filter(x => x.status === 'registrado').length;
+  const pul   = filaOCR.filter(x => x.status === 'pulado').length;
+  const pend  = total - reg - pul;
+  const temExpansao = filaOCR.some(x => x.dados);
+  const rotulo = temExpansao ? 'item' : 'arq.';
+  $('filaProgresso').innerHTML =
+    `<b>${total}</b> ${rotulo} — ` +
+    `<span style="color:var(--ok)">✓ ${reg}</span> · ` +
+    `<span>○ ${pend} pend.</span>` +
+    (pul ? ` · <span style="color:var(--alerta)">— ${pul} pul.</span>` : '');
+
+  // — Arquivo atual e badge de status —
+  $('filaArquivoNome').textContent = item.nome;
+  const badge = $('filaStatusBadge');
+  if (item.status === 'pendente') {
+    badge.style.display = 'none';
+  } else {
+    badge.style.display = '';
+    badge.textContent = item.status === 'registrado' ? '✓ Registrada' : '— Pulada';
+    badge.className = 'tag ' + (item.status === 'registrado' ? 'col-ok' : 'col-ruim');
+  }
+
+  // — Botões de navegação —
+  $('filaBtnAnterior').disabled = idx <= 0;
+  $('filaBtnProximo').disabled  = idx >= total - 1;
+  $('filaBtnPular').style.display    = item.status === 'pendente' ? '' : 'none';
+  $('filaBtnDesmarcar').style.display = item.status !== 'pendente' ? '' : 'none';
+
+  // — Carrega o arquivo (lazy) se ainda não carregado —
+  if (!item.url && !item.texto && item.file) {
+    await new Promise(resolve => {
+      if (item.isImg) {
+        item.url = URL.createObjectURL(item.file);
+        resolve();
+      } else {
+        const r = new FileReader();
+        r.onload = e => { item.texto = e.target.result; resolve(); };
+        r.onerror = () => resolve();
+        r.readAsText(item.file, 'utf-8');
+      }
+    });
+  }
+
+  // — Preview —
+  const prev = $('filaPreview');
+  if (item.url) {
+    prev.innerHTML = `<div style="text-align:center"><img src="${item.url}" alt="${item.nome}"
+      style="max-width:100%;max-height:260px;border-radius:8px;border:1px solid var(--linha);object-fit:contain"></div>`;
+  } else if (item.dados) {
+    // Entrada expandida de JSON multi-OC — mostra resumo e preenche o formulário
+    const d = item.dados;
+    const prodLabel = d.produto && d.onda ? `${d.produto} onda ${d.onda}` : '';
+    const tipLabel  = d.tipoPapelOriginal && d.tipoPapelOriginal !== prodLabel ? ` <span style="color:var(--tinta2)">(${d.tipoPapelOriginal})</span>` : '';
+    const semProd   = !d.produto && d.tipoPapelOriginal
+      ? `<span style="color:var(--alerta)">⚠️ Produto não identificado: ${d.tipoPapelOriginal} — selecione manualmente.</span>` : '';
+    prev.innerHTML = `<div style="background:var(--campo);border:1px solid var(--linha);border-radius:10px;
+      padding:8px 12px;font-size:12.5px;line-height:2">
+      ${d.cliente ? `<b>Cliente:</b> ${d.cliente}<br>` : ''}
+      <b>OC:</b> ${d.oc} &nbsp;·&nbsp; <b>Qtde:</b> ${d.qtde} chapas<br>
+      <b>Largura:</b> ${d.larg} mm &nbsp;·&nbsp; <b>Comprimento:</b> ${d.compr} mm<br>
+      <b>Vinco:</b> ${d.vinco === 'x' ? 'Liso (sem vinco)' : d.vinco}<br>
+      ${prodLabel ? `<b>Produto:</b> ${prodLabel}${tipLabel}` : semProd}
+    </div>`;
+    autoPreencheFila(item.dados);
+  } else if (item.texto) {
+    const trecho = item.texto.substring(0, 1800).replace(/</g, '&lt;');
+    const pareceJSON = /^\s*[\[{]/.test(item.texto);
+    const parsedTxt = pareceJSON ? parseJSONTolerante(item.texto) : null;
+    const aviso = (pareceJSON && !parsedTxt)
+      ? `<p style="color:var(--alerta);font-size:12px;margin-bottom:6px">⚠️ Este JSON não pôde ser lido (sintaxe inválida) —
+         os campos abaixo NÃO foram preenchidos automaticamente. Confira o texto e corrija.</p>` : '';
+    prev.innerHTML = aviso + `<pre style="background:var(--campo);border:1px solid var(--linha);border-radius:10px;
+      padding:10px;font-size:11.5px;max-height:150px;overflow-y:auto;white-space:pre-wrap;word-break:break-word">${trecho}</pre>`;
+    // Tenta auto-preencher campos se o JSON tiver as chaves esperadas
+    if (parsedTxt) autoPreencheFila(parsedTxt);
+  } else {
+    prev.innerHTML = `<p style="font-size:13px;color:var(--tinta2);margin-top:4px">📎 ${item.nome}</p>`;
+  }
+
+  // — Chips da fila (clicáveis para navegar) —
+  $('filaLista').innerHTML = filaOCR.map((f, i) => {
+    const ic  = { pendente:'○', registrado:'✓', pulado:'—' }[f.status] || '○';
+    const cls = ['fila-chip',
+      f.status === 'registrado' ? 'ok' : f.status === 'pulado' ? 'pul' : '',
+      i === idx ? 'ativo' : ''
+    ].filter(Boolean).join(' ');
+    let label;
+    if (f.dados) {
+      const qtde = f.dados.qtde != null ? f.dados.qtde : '—';
+      const tipo = f.dados.tipoPapelOriginal || '';
+      const dim = (f.dados.larg && f.dados.compr) ? ` ${f.dados.larg}×${f.dados.compr}` : '';
+      label = qtde + (tipo ? ' · ' + tipo : '') + dim;
+    } else {
+      label = f.nome.replace(/\.[^.]+$/, '').substring(0, 20);
+    }
+    return `<span class="${cls}" onclick="mostraItemFila(${i})" title="${f.nome}">${ic} ${i+1}. ${label}</span>`;
+  }).join('');
+}
+
+/* Preenche o formulário da OF com dados vindos de um JSON exportado pelo OCR.
+   Chaves suportadas (todas opcionais): cliente, oc, qtde, larg, compr, vinco, data, produto, onda
+   (o nº da OP nunca vem do OCR — é sempre gerado localmente, ver sugereOP()).
+   "data" já vem em ISO (aaaa-mm-dd) — ver achaDataPedido()/parseDataBR(). Se o
+   OCR não trouxer data, o campo mantém o valor padrão (hoje) e o operador corrige. */
+function autoPreencheFila(dados) {
+  const mapa = { cliente:'fCliente', oc:'fOC', qtde:'fQtde',
+                 larg:'fLarg', compr:'fCompr', vinco:'fVinco', data:'fData' };
+  let tocou = false;
+  Object.entries(mapa).forEach(([k, id]) => {
+    if (dados[k] != null && String(dados[k]).trim() !== '') { $(id).value = dados[k]; tocou = true; }
+  });
+  if (dados.produto && dados.onda) {
+    const val = dados.produto + '|' + dados.onda;
+    const opt = $('fProduto').querySelector(`option[value="${CSS.escape(val)}"]`);
+    if (opt) { $('fProduto').value = val; aoMudarProduto(); }
+  }
+  if (tocou) recalcula();
+  verificaDuplicidade();
+}
+
+function navFila(delta) {
+  const idx = filaIdx + delta;
+  if (idx >= 0 && idx < filaOCR.length) mostraItemFila(idx);
+}
+
+function pulaFila() {
+  if (filaIdx < 0 || filaIdx >= filaOCR.length) return;
+  filaOCR[filaIdx].status = 'pulado';
+  salvaFilaOCR();
+  avancaFila();
+}
+
+function desmarcarFila() {
+  if (filaIdx < 0 || filaIdx >= filaOCR.length) return;
+  filaOCR[filaIdx].status = 'pendente';
+  salvaFilaOCR();
+  mostraItemFila(filaIdx);
+}
+
+function avancaFila() {
+  // Próximo pendente após o atual
+  for (let i = filaIdx + 1; i < filaOCR.length; i++) {
+    if (filaOCR[i].status === 'pendente') { limpaForm(); mostraItemFila(i); return; }
+  }
+  // Volta do início caso tenha pendente antes (lote não-sequencial)
+  for (let i = 0; i < filaIdx; i++) {
+    if (filaOCR[i].status === 'pendente') { limpaForm(); mostraItemFila(i); return; }
+  }
+  // Nenhum pendente restante → fila concluída
+  const reg = filaOCR.filter(x => x.status === 'registrado').length;
+  const pul = filaOCR.filter(x => x.status === 'pulado').length;
+  mostraItemFila(filaIdx);
+  const msg = `Fila concluída!\n\n✓ ${reg} OF${reg !== 1 ? 's' : ''} registrada${reg !== 1 ? 's' : ''}` +
+    (pul ? `\n— ${pul} arquivo${pul !== 1 ? 's' : ''} pulado${pul !== 1 ? 's' : ''}` : '') +
+    `\n\nIr para Programação?`;
+  if (confirm(msg)) { fechaFila(); trocaAba('prog'); }
+}
+
+function fechaFila() {
+  filaMode = false;
+  $('filaOCRPanel').style.display = 'none';
+  filaOCR.forEach(f => { if (f.url) URL.revokeObjectURL(f.url); });
+  filaOCR = []; filaIdx = -1;
+  try { localStorage.removeItem(FILA_KEY2); } catch(e) {}
+}
+
+/* ===== DUPLICIDADE =====
+   Avisa quando o MESMO CLIENTE + MESMO Nº DE OC já foi lançado. Não precisa
+   configurar nada nem conectar pasta — compara com:
+     1. a programação em aberto (db.ofs, que está no servidor e vale para todos
+        os aparelhos);
+     2. a fila: programacao-hoje.xlsx publicado pela VPS no repositório do app
+        de Controle de Produção (pedidos lançados e ainda não produzidos);
+     3. a produção já feita: producao-viva.json (paletes etiquetados) +
+        producao-antiga.json (histórico dos relatórios de turno).
+   (As mesmas fontes que a Consulta OC usa.)
+   O aviso vermelho aparece no formulário assim que Cliente + OC batem. Ao
+   SALVAR, se além disso a medida (largura × comprimento) for a mesma, o app
+   ainda pede confirmação — a mesma OC pode ter itens diferentes (medidas
+   diferentes), então só a medida igual é tratada como duplicidade provável.
+   Sem OC, compara Cliente + Largura + Comprimento + Quantidade.
+   Cliente é comparado por "contém" porque os relatórios às vezes abreviam o
+   nome (ex.: "PCBOX" em vez de "PCBOX EMBALAGENS LTDA"). */
+const BASE_DADOS = 'https://raw.githubusercontent.com/marcilianocamargo-stack/controle-producao-etiquetas/main/';
+let indiceProducao = null;   // [{cliente, oc, data, largMM, comprMM, qtde, produzido, origem}] — já produzido
+let indiceFila = null;       // mesma forma — na fila, ainda não produzido
+let dupAtualizadoEm = 0, dupCarregando = false, dupErroProd = false, dupErroFila = false;
+
+/* Assinatura das planilhas geradas pelo botão "Excel por Bobina"/"Excel por
+   OC" deste app — é o formato do arquivo de programação/fila pendente. Não
+   tem coluna "OF" separada (o número de OF fica só no título da aba), então
+   não colide com a assinatura de COLS_PRODUCAO (que exige OF+SALDO). */
+const COLS_FILA = ['CLIENTE', 'OC', 'DATA PEDIDO', 'QTDE PEDIDO'];
+
+/* "Data Pedido" normalmente vem como texto "dd/mm/aaaa" (é assim que este
+   app grava), mas se alguém editar a planilha manualmente no Excel a célula
+   pode virar data de verdade (número de série, ex.: 46218) — sem isso a
+   coluna mostraria esse número cru no aviso em vez da data. */
+function dataCelula(v) {
+  if (v == null || v === '') return '';
+  if (typeof v === 'number') {
+    try { return XLSX.SSF.format('dd/mm/yyyy', v); } catch (e) { return ''; }
+  }
+  return String(v).trim();
+}
+
+function extraiLinhasFilaXLSX(sheet, arquivo) {
+  const aoa = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true, defval: '' });
+  let hIdx = -1, colMap = {}, colLarg = null, colCompr = null;
+  for (let i = 0; i < aoa.length; i++) {
+    const row = aoa[i].map(c => String(c == null ? '' : c).trim().toUpperCase());
+    if (COLS_FILA.every(k => row.includes(k))) {
+      hIdx = i;
+      aoa[i].forEach((v, ci) => {
+        const k = String(v == null ? '' : v).trim().toUpperCase();
+        if (k && colMap[k] == null) colMap[k] = ci;
+        // "largura"/"comprimento (facão)" — por nome parcial, evita depender do acento exato
+        if (k.startsWith('LARGURA') && colLarg == null) colLarg = ci;
+        if (k.startsWith('COMPRIMENTO') && colCompr == null) colCompr = ci;
+      });
+      break;
+    }
+  }
+  if (hIdx < 0 || colLarg == null || colCompr == null) return [];
+  const colPO = colMap['P.O.'];
+  const kVinco = Object.keys(colMap).find(k => k.startsWith('SLITER') || k.startsWith('SLITTER'));
+  const colVinco = kVinco ? colMap[kVinco] : null;
+  const linhas = [];
+  for (let i = hIdx + 1; i < aoa.length; i++) {
+    const row = aoa[i];
+    const cliente = String(row[colMap['CLIENTE']] == null ? '' : row[colMap['CLIENTE']]).trim();
+    if (!cliente) continue;
+    const larg = +row[colLarg] || 0, compr = +row[colCompr] || 0;
+    if (!larg || !compr) continue;
+    linhas.push({
+      cliente,
+      oc: String(row[colMap['OC']] == null ? '' : row[colMap['OC']]).trim(),
+      data: dataCelula(row[colMap['DATA PEDIDO']]),
+      largMM: Math.round(larg * 1000), comprMM: Math.round(compr * 1000),
+      qtde: +row[colMap['QTDE PEDIDO']] || 0,
+      po: colPO == null ? '' : String(row[colPO] == null ? '' : row[colPO]).trim(),
+      vinco: colVinco == null ? '' : String(row[colVinco] == null ? '' : row[colVinco]).trim(),
+      arquivo
+    });
+  }
+  return linhas;
+}
+
+const normTxtDup = s => String(s || '').trim().toUpperCase().replace(/\s+/g, ' ');
+/* Tira tudo que não é letra/número e, se sobrar só dígitos, tira os zeros à
+   esquerda — "0039" e "39" têm que bater, é a mesma OC digitada diferente. */
+function normOC(s) {
+  let t = String(s || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (/^\d+$/.test(t)) t = t.replace(/^0+(?=\d)/, '');
+  return t;
+}
+/* Compara cliente por "contém" (não por igualdade exata): esses relatórios
+   às vezes abreviam o nome do cliente (ex.: "PCBOX" em vez de "PCBOX
+   EMBALAGENS LTDA"), então igualdade exata deixaria passar duplicidade real. */
+function clienteBate(a, b) {
+  const x = normTxtDup(a), y = normTxtDup(b);
+  if (x.length < 3 || y.length < 3) return x === y;
+  return x === y || x.includes(y) || y.includes(x);
+}
+
+
+const bustDup = () => '?t=' + Math.floor(Date.now() / 60000);   // fura o cache de 5 min do raw do GitHub
+async function pegaJSONdup(nome) {
+  const r = await fetch(BASE_DADOS + nome + bustDup(), { cache: 'no-store' });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+
+async function carregaDuplicidade(forca) {
+  if (dupCarregando) return;
+  if (!forca && Date.now() - dupAtualizadoEm < 30000) return;
+  dupCarregando = true;
+  const [a, v, f] = await Promise.allSettled([
+    pegaJSONdup('producao-antiga.json'),
+    pegaJSONdup('producao-viva.json'),
+    fetch(BASE_DADOS + 'programacao-hoje.xlsx' + bustDup(), { cache: 'no-store' }).then(r => {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.arrayBuffer();
+    })
+  ]);
+  if (a.status === 'fulfilled' || v.status === 'fulfilled') {
+    const mapa = new Map();   // OP+medida: o app de Controle (viva) vale mais que o histórico
+    [(a.value && a.value.itens) || [], (v.value && v.value.itens) || []].forEach(lista => lista.forEach(i => {
+      mapa.set(normOC(i.op) + '|' + i.larg + '|' + i.comp, {
+        cliente: i.cliente || '', oc: i.oc || '', data: i.data || '',
+        largMM: i.larg, comprMM: i.comp, qtde: i.qtde || 0, produzido: i.prod || 0,
+        po: i.papel || '', origem: 'produzido'
+      });
+    }));
+    indiceProducao = [...mapa.values()];
+    dupErroProd = a.status !== 'fulfilled' || v.status !== 'fulfilled';
+  } else dupErroProd = true;
+  if (f.status === 'fulfilled') {
+    try {
+      const wb = XLSX.read(f.value, { type: 'array' });
+      const linhas = [];
+      wb.SheetNames.forEach(sn => extraiLinhasFilaXLSX(wb.Sheets[sn], 'programacao-hoje.xlsx')
+        .forEach(l => linhas.push(Object.assign(l, { origem: 'fila' }))));
+      indiceFila = linhas; dupErroFila = false;
+    } catch (e) { dupErroFila = true; }
+  } else dupErroFila = true;
+  dupAtualizadoEm = Date.now();
+  dupCarregando = false;
+  atualizaStatusDuplicidade();
+  verificaDuplicidade();
+}
+
+function atualizaStatusDuplicidade() {
+  const el = $('dupStatus');
+  if (!el) return;
+  if (indiceProducao == null && indiceFila == null) {
+    el.textContent = 'Checagem de duplicidade: sem conexão com produção/fila — verificando só a programação atual.';
+    return;
+  }
+  el.textContent = 'Checagem de duplicidade (cliente + OC): programação atual, fila (' + (indiceFila ? indiceFila.length : '—') +
+    ') e produção (' + (indiceProducao ? indiceProducao.length : '—') + ' pedidos)' +
+    (dupErroProd || dupErroFila ? ' · ⚠️ parte indisponível agora' : '') + '.';
+}
+
+function itensDaProgramacao() {
+  return db.ofs.filter(o => !o.cancelada).map(o => ({
+    cliente: o.cliente, oc: o.oc || '', data: dataBR(o.data),
+    largMM: o.larg, comprMM: o.compr, qtde: o.qtde, op: o.of,
+    po: poCodigo(o), vinco: o.vinco || '', origem: 'programacao'
+  }));
+}
+
+/* Vinco só pelos números ("73 x 620 x 73" == "73x620x73"; "x"/vazio = liso). */
+const normVinco = s => String(s || '').toLowerCase().replace(/,/g, '.').split('x')
+  .map(t => t.trim()).filter(t => t !== '').join('x');
+const normPO = s => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+
+/* Procura no que já existe o mesmo Cliente + OC (ou, sem OC, Cliente + medida +
+   quantidade). Devolve { achados, fortes } ou null. "fortes" = achados que são
+   o mesmo item do formulário: mesma medida, mesmo papel (P.O.) e mesmo vinco.
+   Papel/vinco só descartam quando os dois lados têm a informação (a produção
+   não guarda vinco; se faltar dos dois lados, continua avisando). */
+function achaDuplicados() {
+  const clienteForm = $('fCliente').value;
+  if (!clienteForm.trim()) return null;
+  const oc = normOC($('fOC').value);
+  const larg = +$('fLarg').value || 0, compr = +$('fCompr').value || 0, qtde = +$('fQtde').value || 0;
+  let teste;
+  if (oc) teste = l => normOC(l.oc) === oc && clienteBate(l.cliente, clienteForm);
+  else if (larg && compr && qtde) teste = l => clienteBate(l.cliente, clienteForm) &&
+    l.largMM === larg && l.comprMM === compr && l.qtde === qtde;
+  else return null;
+  const [codForm, ondaForm] = String($('fProduto').value).split('|');
+  const poForm = normPO(codForm + (ondaForm === 'D' ? '' : (ondaForm || '')));
+  const vincoForm = normVinco($('fVinco').value);
+  const mesmoItem = l => {
+    if (oc && !(larg && compr && l.largMM === larg && l.comprMM === compr)) return false;
+    const po = normPO(l.po);
+    if (po && poForm && po !== poForm) return false;
+    if (l.vinco != null && l.vinco !== '' && normVinco(l.vinco) !== vincoForm) return false;
+    return true;
+  };
+  const tira = lista => {   // o mesmo pedido pode estar na programação, na fila e na produção
+    const vistos = new Set(), out = [];
+    lista.forEach(l => {
+      const k = [normTxtDup(l.cliente), normOC(l.oc), l.largMM, l.comprMM, l.qtde, normPO(l.po)].join('|');
+      if (vistos.has(k)) return;
+      vistos.add(k); out.push(l);
+    });
+    return out;
+  };
+  const todos = [].concat(indiceProducao || [], indiceFila || [], itensDaProgramacao()).filter(teste);
+  if (!todos.length) return null;
+  return { achados: tira(todos), fortes: tira(todos.filter(mesmoItem)), oc: $('fOC').value.trim() };
+}
+
+const ORIGEM_DUP = { produzido: 'já produzido', fila: 'na fila (ainda não produzido)', programacao: 'na programação atual' };
+function descreveDup(l) {
+  return ORIGEM_DUP[l.origem] + ' — ' + l.qtde + ' chapas' +
+    (l.largMM && l.comprMM ? ' · ' + l.largMM + ' × ' + l.comprMM + ' mm' : '') +
+    (l.po ? ' · ' + l.po : '') + (l.vinco && normVinco(l.vinco) ? ' · vinco ' + l.vinco : '') +
+    (l.origem === 'produzido' && l.produzido != null ? ' · ' + l.produzido + ' produzidas' : '') +
+    (l.op ? ' · OP ' + l.op : '') + (l.data ? ' · ' + l.data : '');
+}
+
+/* Roda a cada mudança de Cliente/OC/Data/Largura/Comprimento/Quantidade no
+   formulário "Nova OF". Não roda ao editar uma OF existente (fEditId preenchido)
+   — senão o pedido acusaria duplicidade dele mesmo. */
+function verificaDuplicidade() {
+  const el = $('avisoDuplicidade');
+  if (!el) return;
+  if ($('fEditId') && $('fEditId').value) { el.innerHTML = ''; return; }
+  const d = achaDuplicados();
+  /* Mesma OC com medida diferente é outro item do mesmo pedido (normal: o cliente
+     manda vários itens na mesma OC) — só avisa quando a medida também bate. */
+  if (!d || !d.fortes.length) { el.innerHTML = ''; return; }
+  const lista = d.fortes.slice(0, 5).map(l => '<li>' + descreveDup(l) + '</li>').join('');
+  el.innerHTML = '<div class="aviso ruim">🚨 <b>Possível duplicidade</b> — ' +
+    (d.oc ? 'este cliente já tem a OC <b>' + d.oc + '</b> lançada com a mesma medida, papel e vinco' : 'este cliente já tem um pedido com a mesma medida e quantidade') +
+    ':<ul style="margin:4px 0 0 18px;padding:0">' + lista + '</ul>' +
+    (d.fortes.length > 5 ? '<div>… e mais ' + (d.fortes.length - 5) + '.</div>' : '') +
+    '<div style="margin-top:4px">Confira antes de lançar de novo.</div></div>';
+}
+
+/* ---------- início ---------- */
+carrega();
+montaProdutos();
+limpaForm();
+desenhaProg();
+trocaAba('prog');
+sincronizaInicial();
+setInterval(verificaServidor, 15000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) verificaServidor(); });
+carregaDuplicidade(true);
+setInterval(() => { if (!document.hidden) carregaDuplicidade(); }, 60000);
+if ('serviceWorker' in navigator && location.protocol.startsWith('http'))
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+
+</script>
+</body>
+</html>
