@@ -2240,7 +2240,9 @@ async function mostraItemFila(idx) {
       const qtde = f.dados.qtde != null ? f.dados.qtde : '—';
       const tipo = f.dados.tipoPapelOriginal || '';
       const dim = (f.dados.larg && f.dados.compr) ? ` ${f.dados.larg}×${f.dados.compr}` : '';
-      label = qtde + (tipo ? ' · ' + tipo : '') + dim;
+      const vc = String(f.dados.vinco == null ? '' : f.dados.vinco).trim();
+      const vinco = vc ? ' · vinco ' + (vc.toLowerCase() === 'x' ? 'liso' : vc) : ''; // no fim da linha: o chip fica mais largo, não mais alto
+      label = qtde + (tipo ? ' · ' + tipo : '') + dim + vinco;
     } else {
       label = f.nome.replace(/\.[^.]+$/, '').substring(0, 20);
     }
