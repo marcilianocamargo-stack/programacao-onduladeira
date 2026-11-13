@@ -1042,16 +1042,18 @@ async function salvaOF(ev) {
     of.id = idNovoPendente; of.novo = true;
   }
   const btn = $('btnSalvar'), txtOrig = btn.textContent;
-  btn.disabled = true; btn.textContent = 'Salvando no servidor...';
+  const btnsTopo = () => document.querySelectorAll('.js-salvar');   // botão(ões) "Registrar OP" do topo da Fila OCR
+  const bloqueia = (b) => { btn.disabled = b; btnsTopo().forEach(x => { x.disabled = b; }); };
+  bloqueia(true); btn.textContent = 'Salvando no servidor...';
   try {
     await mutaServidor('/ofs/salvar', { of });   // o servidor dá a OP e a OF (FSC)
   } catch (e) {
     alert('Não foi possível salvar o pedido no servidor.\n\n' + e.message +
       '\n\nO formulário foi mantido — tente salvar de novo.');
-    btn.disabled = false; btn.textContent = txtOrig;
+    bloqueia(false); btn.textContent = txtOrig;
     return false;
   }
-  btn.disabled = false; btn.textContent = txtOrig;
+  bloqueia(false); btn.textContent = txtOrig;
   if (filaMode && filaIdx >= 0 && filaIdx < filaOCR.length) {
     filaOCR[filaIdx].status = 'registrado';
     salvaFilaOCR();
@@ -1069,6 +1071,7 @@ function limpaForm() {
   $('fEditId').value = '';
   $('fVinco').value = 'x';
   $('btnSalvar').textContent = 'Registrar OP';
+  document.querySelectorAll('.js-salvar').forEach(x => { x.textContent = 'Registrar OP'; });
   const hoje = new Date();
   $('fData').value = hoje.toISOString().slice(0, 10);
   aoMudarProduto();
@@ -1105,6 +1108,7 @@ function editaOF(id) {
   $('fArranjo').value = o.arranjo; $('fBobina').value = o.bobina;
   $('fPalQtde').value = o.palQtde || ''; $('fPalMed').value = o.palMed || '';
   $('btnSalvar').textContent = 'Salvar alterações';
+  document.querySelectorAll('.js-salvar').forEach(x => { x.textContent = 'Salvar alterações'; });
   recalcula();
 }
 
@@ -2204,8 +2208,9 @@ async function mostraItemFila(idx) {
     const tipLabel  = d.tipoPapelOriginal && d.tipoPapelOriginal !== prodLabel ? ` <span style="color:var(--tinta2)">(${d.tipoPapelOriginal})</span>` : '';
     const semProd   = !d.produto && d.tipoPapelOriginal
       ? `<span style="color:var(--alerta)">⚠️ Produto não identificado: ${d.tipoPapelOriginal} — selecione manualmente.</span>` : '';
-    prev.innerHTML = `<div style="background:var(--campo);border:1px solid var(--linha);border-radius:10px;
+    prev.innerHTML = `<div style="position:relative;background:var(--campo);border:1px solid var(--linha);border-radius:10px;
       padding:8px 12px;font-size:12.5px;line-height:2">
+      <div style="position:absolute;right:12px;bottom:10px">${botaoRegistrarTopo()}</div>
       ${d.cliente ? `<b>Cliente:</b> ${d.cliente}<br>` : ''}
       <b>OC:</b> ${d.oc} &nbsp;·&nbsp; <b>Qtde:</b> ${d.qtde} chapas<br>
       <b>Largura:</b> ${d.larg} mm &nbsp;·&nbsp; <b>Comprimento:</b> ${d.compr} mm<br>
@@ -2228,6 +2233,9 @@ async function mostraItemFila(idx) {
     prev.innerHTML = `<p style="font-size:13px;color:var(--tinta2);margin-top:4px">📎 ${item.nome}</p>`;
   }
 
+  // Sem o quadro de resumo (imagem/texto/anexo): botão numa linha própria, à direita
+  if (!item.dados) prev.insertAdjacentHTML('beforeend', `<div style="text-align:right;margin-top:8px">${botaoRegistrarTopo()}</div>`);
+
   // — Chips da fila (clicáveis para navegar) —
   $('filaLista').innerHTML = filaOCR.map((f, i) => {
     const ic  = { pendente:'○', registrado:'✓', pulado:'—' }[f.status] || '○';
@@ -2248,6 +2256,14 @@ async function mostraItemFila(idx) {
     }
     return `<span class="${cls}" onclick="mostraItemFila(${i})" title="${f.nome}">${ic} ${i+1}. ${label}</span>`;
   }).join('');
+}
+
+/* Segundo botão "Registrar OP", no topo da Fila OCR: envia o MESMO formulário
+   (salvaOF) que o botão do fim da página. O texto acompanha o do botão principal
+   ("Registrar OP" / "Salvar alterações"). */
+function botaoRegistrarTopo() {
+  const txt = ($('btnSalvar').textContent || 'Registrar OP').replace(/</g, '&lt;');
+  return `<button class="btn js-salvar" type="submit" form="formOF" style="white-space:nowrap">${txt}</button>`;
 }
 
 /* Preenche o formulário da OF com dados vindos de um JSON exportado pelo OCR.
