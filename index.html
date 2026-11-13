@@ -1248,11 +1248,10 @@ function sortOFsDiaPorOC(ofs) {
 }
 
 function sortOFsDiaPorMedida(ofs) {
-  // Só a MEDIDA da chapa manda (o tipo de papel/produto NÃO entra na ordem — pode sair
-  // P55D, P25B, P40C na sequência): largura (maior → menor) → comprimento (maior → menor) → nº OF
-  return ofs.slice().sort((a, b) => {
-    return ((+b.larg || 0) - (+a.larg || 0)) || ((+b.compr || 0) - (+a.compr || 0)) || (+a.of - +b.of);
-  });
+  // Só a LARGURA da chapa manda, do mais largo para o mais estreito (tipo de papel/produto
+  // e comprimento NÃO entram na ordem — pode sair P55D, P25B, P40C na sequência).
+  // O nº da OP só desempata larguras iguais, para a ordem ser sempre a mesma.
+  return ofs.slice().sort((a, b) => ((+b.larg || 0) - (+a.larg || 0)) || (+a.of - +b.of));
 }
 
 function mprOF(of) {
