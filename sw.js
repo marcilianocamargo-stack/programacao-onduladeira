@@ -3,7 +3,7 @@
    Para forçar atualização nos aparelhos: mude o número da versão e faça o commit.
    O nome do cache começa com "programacao-onduladeira-" e só os caches com esse começo são apagados aqui:
    todos os apps da Prime ficam no mesmo endereço (github.io) e dividem o mesmo armazenamento. */
-const VERSAO = 'programacao-onduladeira-v5';
+const VERSAO = 'programacao-onduladeira-v6';
 const ARQUIVOS = ['./', 'index.html', 'manifest.json', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png'];
 
 self.addEventListener('install', e => {

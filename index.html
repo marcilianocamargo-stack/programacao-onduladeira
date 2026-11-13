@@ -1248,12 +1248,9 @@ function sortOFsDiaPorOC(ofs) {
 }
 
 function sortOFsDiaPorMedida(ofs) {
-  // Para estoque curto de bobinas: 1. Tipo de papel (receita de papéis)  2. dentro do papel,
-  // medidas vizinhas juntas: largura da chapa → comprimento → nº OF
-  const chavePapel = o => (o.papeis || []).join('|');
+  // Só a MEDIDA da chapa manda (o tipo de papel/produto NÃO entra na ordem — pode sair
+  // P55D, P25B, P40C na sequência): largura (maior → menor) → comprimento (maior → menor) → nº OF
   return ofs.slice().sort((a, b) => {
-    const pc = chavePapel(a).localeCompare(chavePapel(b), 'pt-BR', { numeric: true });
-    if (pc !== 0) return pc;
     return ((+b.larg || 0) - (+a.larg || 0)) || ((+b.compr || 0) - (+a.compr || 0)) || (+a.of - +b.of);
   });
 }
