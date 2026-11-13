@@ -464,6 +464,7 @@ const SEED = {
     { cod: 'PK70', tipo: 'S', ondas: ['B'],      colMin: 7.0, gramB: 448, gramC: 460, rec: ['KSZ125', 'TLQ145', 'TLQ125'] },
     { cod: 'PK80', tipo: 'S', ondas: ['B'],      colMin: 8.0, gramB: 504, gramC: 518, rec: ['KSZ145', 'TLQ145', 'TLQ145'] },
     { cod: 'P50D', tipo: 'D', ondas: ['D'], colMin: 5.0, gramB: 538, gramC: 538, rec: ['TPQ100', 'TPQ100', 'TPQ100', 'TPQ100', 'TPQ100'] },
+    { cod: 'PW50D', tipo: 'D', ondas: ['D'], colMin: 5.0, gramB: 538, gramC: 538, rec: ['WTL120', 'TLQ110', 'TPQ100', 'TPQ100', 'TPQ100'] },
     { cod: 'P55D', tipo: 'D', ondas: ['D'], colMin: 5.5, gramB: 568, gramC: 568, rec: ['TLQ100', 'TLQ100', 'TLQ100', 'TLQ100', 'TLQ100'] },
     { cod: 'P70D', tipo: 'D', ondas: ['D'], colMin: 7.0, gramB: 632, gramC: 632, rec: ['TLQ110', 'TLQ110', 'TPQ100', 'TPQ100', 'TLQ110'] },
     { cod: 'P80D', tipo: 'D', ondas: ['D'], colMin: 8.0, gramB: 662, gramC: 662, rec: ['TLQ125', 'TLQ110', 'TPQ100', 'TPQ100', 'TLQ125'] }
@@ -537,6 +538,15 @@ function migraDb() {
   if (db.v < 12) {  // migração: comprimento mínimo da máquina passou a ser 500 mm
     db.params.limites.comprMin = 500;
     db.v = 12;
+  }
+  if (db.v < 13) {  // migração: novo produto PW50D (dupla, capa externa branca) — gramatura provisória 538 (= P50D)
+    if (!db.produtos.some(p => p.cod === 'PW50D')) {
+      const i = db.produtos.findIndex(p => p.cod === 'P50D');
+      const novo = { cod: 'PW50D', tipo: 'D', ondas: ['D'], colMin: 5.0, gramB: 538, gramC: 538,
+                     rec: ['WTL120', 'TLQ110', 'TPQ100', 'TPQ100', 'TPQ100'] };
+      db.produtos.splice(i >= 0 ? i + 1 : db.produtos.length, 0, novo);
+    }
+    db.v = 13;
   }
   salva();
 }
